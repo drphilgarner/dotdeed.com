@@ -807,7 +807,7 @@ function updatePreview() {
                     <div class="frame-assembly">
                         <div class="frame-hanger"></div>
                         <div class="frame-outer">
-                            <div class="frame-wood" data-wood="${frameWoodType}" style="padding: 14px;">
+                            <div class="frame-wood" data-wood="${frameWoodType}" style="padding: 36px;">
                                 <div class="frame-corner frame-corner-tl"></div>
                                 <div class="frame-corner frame-corner-tr"></div>
                                 <div class="frame-corner frame-corner-bl"></div>
