@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOT DEED — Premium Domain Certificates</title>
+    <link rel="icon" type="image/png" href="image copy.png">
+    <link rel="stylesheet" href="styles-new.css">
+</head>
+<body>
+    <!-- HEADER & NAVIGATION -->
+    <header class="header" id="siteHeader">
+        <div class="header-container">
+            <div class="logo">
+                <div class="logo-icon-wrapper">
+                    <img class="logo-svg" src="image copy.png" alt="DOT DEED">
+                </div>
+                <span class="logo-text">DOT DEED</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#storefront" class="nav-link active">Home</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#studio" class="nav-link">Studio</a>
+                <a href="#domain-shopper" class="nav-link">Domain Shopper</a>
+                <a href="#vault" class="nav-link">Vault</a>
+            </nav>
+            <div class="header-actions">
+                <div id="userRegistryBadge" class="user-registry-badge" style="display:none;">
+                    <span class="registry-badge-id"></span>
+                </div>
+                <button id="authBtn" class="auth-btn" onclick="openAuthModal()">Sign In</button>
+                <button id="darkModeToggle" class="dark-mode-toggle" aria-label="Toggle dark mode">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="main-container">
+        <!-- STOREFRONT PANEL -->
+        <section id="storefront" class="panel storefront-panel active">
+            <!-- ===== HERO SECTION ===== -->
+            <div class="s-hero">
+                <div class="s-hero-content">
+                    <div class="s-hero-badge">DOT DEED · Digital Estate Registry</div>
+                    <h1 class="s-hero-title">
+                        Your domain.<br>Celebrated as <span class="s-hero-highlight">a masterpiece.</span>
+                    </h1>
+                    <p class="s-hero-sub">
+                        <strong>DOT DEED</strong> transforms your domain names into elegant, printable certificates — perfect for gifting, collecting, or proudly displaying your digital estate.
+                    </p>
+                    <div class="s-hero-actions">
+                        <button class="s-btn s-btn-primary" onclick="navigateToPanel('#studio'); updateNavActive('#studio');">
+                            Create Your Certificate
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                        <button class="s-btn s-btn-secondary" onclick="navigateToPanel('#about'); updateNavActive('#about');">
+                            Learn More
+                        </button>
+                    </div>
+                    <p class="s-hero-meta">No credit card required · Free Registry ID included</p>
+                </div>
+                <div class="s-hero-visual">
+                    <div class="s-hero-image-frame">
+                        <img class="s-hero-main-img" src="image copy 2.png" alt="DOT DEED Certificate">
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== BRAND STRIP ===== -->
+            <div class="s-brand-strip">
+                <div class="s-brand-strip-inner">
+                    <span class="s-brand-strip-label">Trusted by domain owners worldwide</span>
+                    <div class="s-brand-strip-logos">
+                        <div class="s-strip-logo">
+                            <img src="image copy.png" alt="DOT DEED">
+                            <span>DOT DEED</span>
+                        </div>
+                        <div class="s-strip-logo">
+                            <img src="image copy.png" alt="DOT DEED">
+                            <span>DOT DEED</span>
+                        </div>
+                        <div class="s-strip-logo">
+                            <img src="image copy.png" alt="DOT DEED">
+                            <span>DOT DEED</span>
+                        </div>
+                        <div class="s-strip-logo">
+                            <img src="image copy.png" alt="DOT DEED">
+                            <span>DOT DEED</span>
+                        </div>
+                        <div class="s-strip-logo">
+                            <img src="image copy.png" alt="DOT DEED">
+                            <span>DOT DEED</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== WHAT WE DO ===== -->
+            <div class="s-section">
+                <div class="s-section-header">
+                    <div class="s-section-badge">Everything you need</div>
+                    <h2 class="s-section-title">One platform for your <span class="brand-highlight">digital domains</span></h2>
+                    <p class="s-section-sub">From elegant certificates to domain discovery — DOT DEED is your complete workspace.</p>
+                </div>
+                <div class="s-features-grid">
+                    <div class="s-feature-card" onclick="navigateToPanel('#studio'); updateNavActive('#studio');">
+                        <div class="s-feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                        </div>
+                        <h3 class="s-feature-title">Premium Certificates</h3>
+                        <p class="s-feature-desc">Create elegant, printable certificates for any domain you own. Multiple tiers, full customization.</p>
+                        <span class="s-feature-link">Customize yours →</span>
+                    </div>
+                    <div class="s-feature-card" onclick="navigateToPanel('#domain-shopper'); updateNavActive('#domain-shopper');">
+                        <div class="s-feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                        </div>
+                        <h3 class="s-feature-title">Domain Marketplace</h3>
+                        <p class="s-feature-desc">Browse hundreds of premium domains. Filter by TLD, price, and availability — all in one place.</p>
+                        <span class="s-feature-link">Explore domains →</span>
+                    </div>
+                    <div class="s-feature-card" onclick="navigateToPanel('#vault'); updateNavActive('#vault');">
+                        <div class="s-feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
+                            </svg>
+                        </div>
+                        <h3 class="s-feature-title">Certificate Vault</h3>
+                        <p class="s-feature-desc">Store, manage, and access all your certificates. Your digital estate, organized and secure.</p>
+                        <span class="s-feature-link">Open vault →</span>
+                    </div>
+                    <div class="s-feature-card" onclick="navigateToPanel('#studio'); updateNavActive('#studio');">
+                        <div class="s-feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                            </svg>
+                        </div>
+                        <h3 class="s-feature-title">Registry Protection</h3>
+                        <p class="s-feature-desc">Every certificate is backed by a unique Registry ID. Anti-forgery protection for your domain deeds.</p>
+                        <span class="s-feature-link">Learn about registry →</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== VISION / GIFTING SECTION ===== -->
+            <div class="s-section s-vision-section">
+                <div class="s-vision-grid">
+                    <div class="s-vision-content">
+                        <div class="s-section-badge">Domains as Gifts</div>
+                        <h2 class="s-section-title">A domain is more than a URL. <span class="brand-highlight">It's a gift.</span></h2>
+                        <p class="s-vision-text">
+                            Imagine giving someone a beautifully framed certificate declaring their very own corner of the internet. Whether it's a birthday, a business launch, or a milestone — a <strong>DOT DEED</strong> certificate turns a domain name into a keepsake they'll treasure.
+                        </p>
+                        <ul class="s-vision-list">
+                            <li>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Surprise someone with their name as a digital estate
+                            </li>
+                            <li>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Celebrate a brand launch with a commemorative deed
+                            </li>
+                            <li>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Frame it, gift it, display it — a timeless digital keepsake
+                            </li>
+                        </ul>
+                        <button class="s-btn s-btn-primary" onclick="navigateToPanel('#studio'); updateNavActive('#studio');">
+                            Give the Gift of Domain
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                    </div>
+                    <div class="s-vision-visual">
+                        <img src="homeless saving.jpeg" alt="Celebrating digital ownership" class="s-vision-img">
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== HOW IT WORKS ===== -->
+            <div class="s-section">
+                <div class="s-section-header">
+                    <div class="s-section-badge">Simple process</div>
+                    <h2 class="s-section-title">Three steps to your <span class="brand-highlight">digital deed</span></h2>
+                </div>
+                <div class="s-steps">
+                    <div class="s-step">
+                        <div class="s-step-num">1</div>
+                        <div class="s-step-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <h3 class="s-step-title">Pick a Certificate</h3>
+                        <p class="s-step-desc">Choose from Essential, Premium, or Elite — each with its own level of elegance.</p>
+                    </div>
+                    <div class="s-step-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                    <div class="s-step">
+                        <div class="s-step-num">2</div>
+                        <div class="s-step-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <h3 class="s-step-title">Customize It</h3>
+                        <p class="s-step-desc">Add your name, domain, and preferred styling. Preview everything live before finalizing.</p>
+                    </div>
+                    <div class="s-step-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                    <div class="s-step">
+                        <div class="s-step-num">3</div>
+                        <div class="s-step-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <h3 class="s-step-title">Print &amp; Display</h3>
+                        <p class="s-step-desc">Export as PDF or print directly. Frame it, gift it, or keep it in your digital vault.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PRODUCTS / CERTIFICATE CARDS ===== -->
+            <div class="s-section">
+                <div class="s-section-header">
+                    <div class="s-section-badge">Our certificates</div>
+                    <h2 class="s-section-title">Choose your <span class="brand-highlight">certificate tier</span></h2>
+                    <p class="s-section-sub">Each tier is crafted with care. Pick the one that matches your style.</p>
+                </div>
+                <div class="s-products-grid">
+                    <article class="s-product-card" onclick="navigateToTierSelect('Essential')">
+                        <div class="s-product-preview">
+                            <div class="s-diploma-mini">
+                                <div class="s-diploma-hd">dotdeed</div>
+                                <div class="s-diploma-bd">Certificate of<br>Digital Estate</div>
+                                <div class="s-diploma-accent"></div>
+                            </div>
+                        </div>
+                        <div class="s-product-body">
+                            <h3 class="s-product-name">Essential</h3>
+                            <p class="s-product-desc">Perfect for personal use. Your name and domain with elegant formatting.</p>
+                            <div class="s-product-footer">
+                                                <span class="s-product-cta">Choose →</span>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="s-product-card s-product-featured" onclick="navigateToTierSelect('Premium')">
+                        <div class="s-product-badge">Most Popular</div>
+                        <div class="s-product-preview">
+                            <div class="s-diploma-mini s-diploma-premium">
+                                <div class="s-diploma-hd">dotdeed · Registry</div>
+                                <div class="s-diploma-bd">Certificate of<br>Digital Estate</div>
+                                <div class="s-diploma-accent s-diploma-accent-premium"></div>
+                            </div>
+                        </div>
+                        <div class="s-product-body">
+                            <h3 class="s-product-name">Premium</h3>
+                            <p class="s-product-desc">Paper texture, maroon accents, and an official crest seal for a distinguished look.</p>
+                            <div class="s-product-footer">
+                                <span class="s-product-cta">Choose →</span>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="s-product-card" onclick="navigateToTierSelect('Elite')">
+                        <div class="s-product-preview">
+                            <div class="s-diploma-mini s-diploma-elite">
+                                <div class="s-diploma-hd">dotdeed · Registry &amp; Holdings</div>
+                                <div class="s-diploma-bd">Certificate of<br>Digital Estate &amp; Trusteeship</div>
+                                <div class="s-diploma-accent s-diploma-accent-elite"></div>
+                            </div>
+                        </div>
+                        <div class="s-product-body">
+                            <h3 class="s-product-name">Elite</h3>
+                            <p class="s-product-desc">Archival-grade with full watermark, premium crest, custom seal, and gold foil options.</p>
+                            <div class="s-product-footer">
+                                <span class="s-product-cta">Choose →</span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <!-- ===== FINAL CTA ===== -->
+            <div class="s-cta-banner">
+                <div class="s-cta-banner-bg">
+                    <img src="0c0d2019-a1a8-4de1-9f98-143c50dba59b.jpeg" alt="" class="s-cta-logo-bg">
+                </div>
+                <div class="s-cta-banner-content">
+                    <h2 class="s-cta-banner-title">Start your digital estate today</h2>
+                    <p class="s-cta-banner-sub">Create a certificate, find a domain, or browse our collection. Your corner of the internet awaits.</p>
+                    <div class="s-cta-banner-actions">
+                        <button class="s-btn s-btn-primary" onclick="navigateToPanel('#studio'); updateNavActive('#studio');">
+                            Get Started Free
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                        <button class="s-btn s-btn-outline" onclick="navigateToPanel('#domain-shopper'); updateNavActive('#domain-shopper');">
+                            Browse Domains
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TIER SELECT PANEL -->
+        <section id="tier-select" class="panel tier-panel">
+            <div class="brand-watermark">
+                <img class="watermark-logo" src="image copy.png" alt="">
+                <span class="watermark-text">DOT DEED</span>
+            </div>
+            <div class="tier-header">
+                <div class="s-section-badge">Step 1: Choose Your Tier</div>
+                <h1 class="tier-title">Choose your <span class="brand-highlight">certificate tier</span></h1>
+                <p class="tier-subtitle">Each tier offers progressively more customization. Pick the level that suits your style.</p>
+                <div class="tier-domain-info">
+                    <span class="tier-domain-label">Selected Domain:</span>
+                    <span id="tierDisplayDomain" class="tier-domain-name">—</span>
+                </div>
+            </div>
+            <div class="tier-cards">
+                <!-- Essential -->
+                <div class="tier-card" onclick="selectTier('Essential')">
+                    <div class="tier-card-header">
+                        <span class="tier-card-num">Essential</span>
+                        <span class="tier-card-badge">Starter</span>
+                    </div>
+                    <div class="tier-card-preview">
+                        <div class="s-diploma-mini">
+                            <div class="s-diploma-hd">dotdeed</div>
+                            <div class="s-diploma-bd">Certificate of<br>Digital Estate</div>
+                            <div class="s-diploma-accent"></div>
+                        </div>
+                    </div>
+                    <p class="tier-card-desc">Clean, classic design with your name and domain. Perfect for personal use.</p>
+                    <div class="tier-card-features">
+                        <span class="tier-feature">✓ Font selection</span>
+                        <span class="tier-feature">✓ Primary color</span>
+                        <span class="tier-feature">✓ Paper texture</span>
+                    </div>
+                    <button class="tier-select-btn">Select Essential</button>
+                </div>
+                <!-- Premium -->
+                <div class="tier-card tier-card-featured" onclick="selectTier('Premium')">
+                    <div class="tier-card-badge-float">Most Popular</div>
+                    <div class="tier-card-header">
+                        <span class="tier-card-num">Premium</span>
+                        <span class="tier-card-badge">Enhanced</span>
+                    </div>
+                    <div class="tier-card-preview">
+                        <div class="s-diploma-mini s-diploma-premium">
+                            <div class="s-diploma-hd">dotdeed · Registry</div>
+                            <div class="s-diploma-bd">Certificate of<br>Digital Estate</div>
+                            <div class="s-diploma-accent s-diploma-accent-premium"></div>
+                        </div>
+                    </div>
+                    <p class="tier-card-desc">Paper texture, maroon accents, crest seal. A distinguished presentation.</p>
+                    <div class="tier-card-features">
+                        <span class="tier-feature">✓ Font selection</span>
+                        <span class="tier-feature">✓ Primary &amp; secondary color</span>
+                        <span class="tier-feature">✓ Seal style</span>
+                        <span class="tier-feature">✓ Paper texture</span>
+                        <span class="tier-feature">✓ Award title</span>
+                        <span class="tier-feature">✓ Corner ornaments</span>
+                    </div>
+                    <button class="tier-select-btn">Select Premium</button>
+                </div>
+                <!-- Elite -->
+                <div class="tier-card" onclick="selectTier('Elite')">
+                    <div class="tier-card-header">
+                        <span class="tier-card-num">Elite</span>
+                        <span class="tier-card-badge">Full Custom</span>
+                    </div>
+                    <div class="tier-card-preview">
+                        <div class="s-diploma-mini s-diploma-elite">
+                            <div class="s-diploma-hd">dotdeed · Registry &amp; Holdings</div>
+                            <div class="s-diploma-bd">Certificate of<br>Digital Estate &amp; Trusteeship</div>
+                            <div class="s-diploma-accent s-diploma-accent-elite"></div>
+                        </div>
+                    </div>
+                    <p class="tier-card-desc">Archival-grade with full watermark, premium crest, gold foil, and every option unlocked.</p>
+                    <div class="tier-card-features">
+                        <span class="tier-feature">✓ Everything in Premium</span>
+                        <span class="tier-feature">✓ Border style</span>
+                        <span class="tier-feature">✓ Gold foil accents</span>
+                        <span class="tier-feature">✓ Filigree pattern</span>
+                        <span class="tier-feature">✓ Business card layout</span>
+                    </div>
+                    <button class="tier-select-btn">Select Elite</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- CUSTOMIZATION STUDIO PANEL (Split Screen) -->
+        <section id="studio" class="panel studio-panel">
+            <div class="brand-watermark">
+                <img class="watermark-logo" src="image copy.png" alt="">
+                <span class="watermark-text">DOT DEED</span>
+            </div>
+            <div class="studio-header">
+                <button class="back-button" onclick="closeStudio()">← Back</button>
+                <div class="studio-title-group">
+                    <span class="studio-brand">
+                    <img class="studio-brand-logo" src="image copy.png" alt="">
+                    DOT DEED
+                </span>
+                    <h1 id="studioTitle" class="studio-title">Certificate Studio</h1>
+                </div>
+            </div>
+
+            <div class="studio-container">
+                <!-- LEFT PANEL: INPUT FORM -->
+                <div class="studio-form-section">
+                    <!-- Tier Selector -->
+                    <div class="studio-tier-selector">
+                        <span class="studio-tier-label">Certificate Tier:</span>
+                        <button class="studio-tier-pill active" data-tier="Essential" onclick="changeTier('Essential')">Essential</button>
+                        <button class="studio-tier-pill" data-tier="Premium" onclick="changeTier('Premium')">Premium</button>
+                        <button class="studio-tier-pill" data-tier="Elite" onclick="changeTier('Elite')">Elite</button>
+                    </div>
+
+                    <!-- Gift / Self Toggle -->
+                    <div class="studio-gift-toggle">
+                        <span class="studio-tier-label">This certificate is for:</span>
+                        <div class="gift-toggle-group">
+                            <button id="giftToggleSelf" class="gift-toggle-btn active" onclick="setGiftMode(false)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                Myself
+                            </button>
+                            <button id="giftToggleGift" class="gift-toggle-btn" onclick="setGiftMode(true)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                                As a Gift
+                            </button>
+                        </div>
+                    </div>
+
+                    <h2 class="form-section-title" id="studioDetailsTitle">Your Details</h2>
+                    
+                    <div class="form-field">
+                        <label for="recipientName" class="form-label" id="recipientLabel">Your Name</label>
+                        <input 
+                            type="text" 
+                            id="recipientName" 
+                            class="form-input" 
+                            placeholder="Enter your full name"
+                            maxlength="60"
+                            onchange="updatePreview()"
+                            onkeyup="updatePreview()"
+                        >
+                        <span class="form-hint" id="recipientHint">Will appear as the certificate holder</span>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="domainName" class="form-label">Domain Name</label>
+                        <input 
+                            type="text" 
+                            id="domainName" 
+                            class="form-input" 
+                            placeholder="example.com"
+                            maxlength="60"
+                            onchange="updatePreview()"
+                            onkeyup="updatePreview()"
+                        >
+                        <span class="form-hint">Your domain namespace</span>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="registryId" class="form-label">Registry ID</label>
+                        <div class="registry-id-wrapper">
+                            <input 
+                                type="text" 
+                                id="registryId" 
+                                class="form-input" 
+                                placeholder="REG-2026-XXXX"
+                                maxlength="40"
+                                readonly
+                            >
+                            <span class="registry-lock-icon" title="Protected ID">🔒</span>
+                        </div>
+                        <span class="form-hint">Your unique registry identifier — <a href="#" onclick="openAuthModal(); return false;" class="auth-hint-link">sign in</a> to activate. Prevents forgery.</span>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="issueDate" class="form-label">Issue Date</label>
+                        <input 
+                            type="date" 
+                            id="issueDate" 
+                            class="form-input"
+                            onchange="updatePreview()"
+                        >
+                        <span class="form-hint">When the certificate was issued</span>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="form-label">Certificate Enhancements</label>
+                        <label class="checkbox-row">
+                            <input type="checkbox" id="certificateUpgrade" onchange="updatePreview()">
+                            <span>Add custom alterations</span>
+                        </label>
+                        <span class="form-hint">Included with every certificate package.</span>
+                    </div>
+
+                    <div id="upgradeNotesSection" class="form-field hidden">
+                        <label for="upgradeNotes" class="form-label">Custom inscription</label>
+                        <textarea id="upgradeNotes" class="form-input" rows="3" placeholder="Commemorating a milestone domain purchase" onchange="updatePreview()" onkeyup="updatePreview()"></textarea>
+                        <span class="form-hint">Optional notes for your custom certificate edition.</span>
+                    </div>
+
+                    <div id="tierCustomizationSection" class="form-field hidden">
+                        <label class="form-label">Customization options</label>
+                        <div class="customization-options">
+                            <label for="fontStyle">Font style</label>
+                            <select id="fontStyle" onchange="updatePreview()">
+                                <option value="Georgia">Georgia</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Garamond">Garamond</option>
+                            </select>
+                            <label for="primaryColor">Primary color</label>
+                            <input type="color" id="primaryColor" value="#6B0B22" onchange="updatePreview()">
+                            <label for="secondaryColor">Secondary color</label>
+                            <input type="color" id="secondaryColor" value="#D62828" onchange="updatePreview()">
+                            <label for="borderStyle">Border style</label>
+                            <select id="borderStyle" onchange="updatePreview()">
+                                <option value="classic">Classic</option>
+                                <option value="double">Double</option>
+                                <option value="ornate">Ornate</option>
+                            </select>
+                            <label for="sealStyle">Seal / Crest style</label>
+                            <select id="sealStyle" onchange="updatePreview()">
+                                <option value="classic">Classic Round</option>
+                                <option value="shield">Shield Crest</option>
+                                <option value="modern">Modern Minimal</option>
+                                <option value="ornate">Ornate Ring</option>
+                            </select>
+                            <label for="paperTexture">Paper texture</label>
+                            <select id="paperTexture" onchange="updatePreview()">
+                                <option value="smooth">Smooth Premium</option>
+                                <option value="parchment">Parchment</option>
+                                <option value="linen">Linen</option>
+                                <option value="vellum">Vellum Antique</option>
+                            </select>
+                            <label for="awardTitle" class="full-width">Award title</label>
+                            <input type="text" id="awardTitle" class="form-input full-width" placeholder="Digital Domain Holder" onchange="updatePreview()" onkeyup="updatePreview()">
+                            <label for="cornerOrnamentStyle">Corner ornament style</label>
+                            <select id="cornerOrnamentStyle" onchange="updatePreview()">
+                                <option value="classic">Classic</option>
+                                <option value="victorian">Victorian</option>
+                                <option value="artdeco">Art Deco</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label for="filigreePattern">Filigree pattern</label>
+                            <select id="filigreePattern" onchange="updatePreview()">
+                                <option value="none">None</option>
+                                <option value="subtle">Subtle</option>
+                                <option value="ornate">Ornate</option>
+                                <option value="geometric">Geometric</option>
+                            </select>
+                            <label class="checkbox-row full-width" style="margin-top: 0.5rem;">
+                                <input type="checkbox" id="goldFoilAccent" onchange="updatePreview()">
+                                <span>Gold foil accents</span>
+                            </label>
+                            <span class="full-width form-hint" style="margin-top: 0;">Metallic gold shimmer on all key elements.</span>
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="checkbox-row">
+                            <input type="checkbox" id="frameUpgrade" onchange="updatePreview()">
+                            <span>Add frame</span>
+                        </label>
+                        <span class="form-hint">Choose a premium wood finish for your display frame.</span>
+                    </div>
+
+                    <div id="frameOptionsSection" class="form-field hidden">
+                        <label class="form-label">Frame wood type</label>
+                        <select id="frameWoodType" onchange="updatePreview()">
+                            <option value="walnut">Walnut</option>
+                            <option value="oak">Oak</option>
+                            <option value="mahogany">Mahogany</option>
+                            <option value="ebony">Ebony</option>
+                        </select>
+                    </div>
+
+                    <div id="businessCardSection" class="form-field hidden">
+                        <label class="checkbox-row">
+                            <input type="checkbox" id="businessCardOption" onchange="onBizCardToggle()">
+                            <span>Include business card presentation</span>
+                        </label>
+                        <span class="form-hint">Elite certificates can be paired with a matching business card layout.</span>
+                        <button id="openBizCardBtn" class="bizcard-open-btn hidden" onclick="openBizCardEditor()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                            Customize Business Card
+                        </button>
+                    </div>
+
+
+
+                    <div class="form-actions">
+                        <button class="btn-export" onclick="exportCertificate()">Export as PDF</button>
+                        <button class="btn-print" onclick="printCertificate()">Print Certificate</button>
+                    </div>
+                </div>
+
+                <!-- RIGHT PANEL: LIVE PREVIEW -->
+                <div class="studio-preview-section">
+                    <div class="preview-label">Live Preview</div>
+                    <div id="certificatePreview" class="certificate-canvas">
+                        <div class="preview-content">
+                            <div class="certificate-canvas-inner" id="certCanvasInner">
+                                <!-- Certificate rendered here by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BIZ CARD EDITOR PANEL -->
+        <section id="bizcard-editor" class="panel bizcard-panel">
+            <div class="bizcard-header">
+                <button class="back-button" onclick="closeBizCardEditor()">← Back to Studio</button>
+                <div class="bizcard-title-group">
+                    <span class="studio-brand">
+                        <img class="studio-brand-logo" src="image copy.png" alt="">
+                        DOT DEED
+                    </span>
+                    <h1 class="bizcard-title">Business Card Editor</h1>
+                </div>
+            </div>
+            <div class="bizcard-container">
+                <!-- LEFT: FORM -->
+                <div class="bizcard-form">
+                    <h2 class="bizcard-form-title">Card Details</h2>
+
+                    <div class="bizcard-field">
+                        <label for="bizName">Your Name</label>
+                        <input type="text" id="bizName" class="bizcard-input" placeholder="Jane Doe" oninput="updateBizCardPreview()">
+                    </div>
+                    <div class="bizcard-field">
+                        <label for="bizTitle">Title / Role</label>
+                        <input type="text" id="bizTitle" class="bizcard-input" placeholder="Digital Estate Holder" oninput="updateBizCardPreview()">
+                    </div>
+                    <div class="bizcard-field">
+                        <label for="bizCompany">Company / Registry</label>
+                        <input type="text" id="bizCompany" class="bizcard-input" value="DOT DEED · Registry of Digital Estates" oninput="updateBizCardPreview()">
+                    </div>
+                    <div class="bizcard-field">
+                        <label for="bizDomain">Domain</label>
+                        <input type="text" id="bizDomain" class="bizcard-input" placeholder="janedoe.com" oninput="updateBizCardPreview()">
+                    </div>
+                    <div class="bizcard-field">
+                        <label for="bizEmail">Email</label>
+                        <input type="email" id="bizEmail" class="bizcard-input" placeholder="jane@domain.com" oninput="updateBizCardPreview()">
+                    </div>
+                    <div class="bizcard-field">
+                        <label for="bizPhone">Phone</label>
+                        <input type="text" id="bizPhone" class="bizcard-input" placeholder="+1 (555) 123-4567" oninput="updateBizCardPreview()">
+                    </div>
+
+                    <h2 class="bizcard-form-title" style="margin-top: 1.5rem;">Style</h2>
+
+                    <div class="bizcard-field">
+                        <label for="bizCardColor">Accent Color</label>
+                        <input type="color" id="bizCardColor" class="bizcard-color" value="#6B0B22" onchange="updateBizCardPreview()">
+                    </div>
+                    <div class="bizcard-field">
+                        <label for="bizCardFont">Font</label>
+                        <select id="bizCardFont" class="bizcard-select" onchange="updateBizCardPreview()">
+                            <option value="Georgia">Georgia (Serif)</option>
+                            <option value="Inter">Inter (Sans)</option>
+                            <option value="Playfair Display">Playfair Display</option>
+                            <option value="Courier New">Courier New (Mono)</option>
+                        </select>
+                    </div>
+                    <div class="bizcard-field">
+                        <label for="bizCardLayout">Layout</label>
+                        <select id="bizCardLayout" class="bizcard-select" onchange="updateBizCardPreview()">
+                            <option value="classic">Classic</option>
+                            <option value="modern">Modern</option>
+                            <option value="minimal">Minimal</option>
+                            <option value="elegant">Elegant</option>
+                        </select>
+                    </div>
+                    <div class="bizcard-field">
+                        <label class="checkbox-row">
+                            <input type="checkbox" id="bizCardLogo" checked onchange="updateBizCardPreview()">
+                            <span>Show DOT DEED emblem</span>
+                        </label>
+                    </div>
+
+                    <div class="bizcard-actions">
+                        <button class="btn-export" onclick="saveBizCard()">Save &amp; Return</button>
+                        <button class="btn-print" onclick="closeBizCardEditor()">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- RIGHT: PREVIEW -->
+                <div class="bizcard-preview-section">
+                    <div class="preview-label">Live Preview</div>
+                    <div class="bizcard-preview-stage" id="bizCardPreviewStage">
+                        <div class="bizcard-preview-inner" id="bizCardPreviewInner">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+                    <p class="bizcard-preview-hint">Front of card — standard business card dimensions (3.5" × 2")</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- DOMAIN SHOPPER PANEL -->
+        <section id="domain-shopper" class="panel shopper-panel">
+            <div class="brand-watermark">
+                <img class="watermark-logo" src="image copy.png" alt="">
+                <span class="watermark-text">DOT DEED</span>
+            </div>
+            <div class="storefront-header">
+                <div class="hero-badge">DOT DEED · Premium Domains</div>
+                <h1 class="storefront-title">Domain <span class="brand-highlight">Shopper</span></h1>
+                <p class="storefront-subtitle">Find your perfect domain and pair it with a premium <strong>DOT DEED</strong> certificate.</p>
+            </div>
+
+            <!-- Hero Search -->
+            <div class="domain-hero-search">
+                <div class="domain-search-box">
+                    <svg class="domain-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="domainSearchInput" class="domain-search-input" placeholder="Search by name, TLD, or keyword..." oninput="filterDomains()">
+                    <button class="domain-search-clear" id="searchClearBtn" onclick="clearDomainSearch()" style="display:none;">&times;</button>
+                    <button class="domain-search-btn" onclick="filterDomains()">Search</button>
+                </div>
+                <div class="domain-search-hint">Browse premium domains — all available for registration</div>
+            </div>
+
+            <!-- TLD Quick Filters -->
+            <div class="tld-filters" id="tldFilters">
+                <button class="tld-filter active" data-tld="all" onclick="filterByTLD('all')">All</button>
+                <button class="tld-filter" data-tld=".dev" onclick="filterByTLD('.dev')">.dev</button>
+                <button class="tld-filter" data-tld=".io" onclick="filterByTLD('.io')">.io</button>
+                <button class="tld-filter" data-tld=".cloud" onclick="filterByTLD('.cloud')">.cloud</button>
+                <button class="tld-filter" data-tld=".studio" onclick="filterByTLD('.studio')">.studio</button>
+                <button class="tld-filter" data-tld=".co" onclick="filterByTLD('.co')">.co</button>
+                <button class="tld-filter" data-tld=".app" onclick="filterByTLD('.app')">.app</button>
+                <button class="tld-filter" data-tld=".ai" onclick="filterByTLD('.ai')">.ai</button>
+                <button class="tld-filter" data-tld=".tech" onclick="filterByTLD('.tech')">.tech</button>
+                <button class="tld-filter" data-tld=".design" onclick="filterByTLD('.design')">.design</button>
+                <button class="tld-filter" data-tld=".life" onclick="filterByTLD('.life')">.life</button>
+                <button class="tld-filter" data-tld=".xyz" onclick="filterByTLD('.xyz')">.xyz</button>
+            </div>
+
+            <!-- Sort & Filter Controls -->
+            <div class="shopper-controls">
+                <div class="shopper-controls-group">
+                    <label class="control-label">Price</label>
+                    <div class="price-filters">
+                        <button class="price-filter active" data-range="all" onclick="filterByPriceRange('all')">All</button>
+                        <button class="price-filter" data-range="under50" onclick="filterByPriceRange('under50')">Under $50</button>
+                        <button class="price-filter" data-range="50to150" onclick="filterByPriceRange('50to150')">$50–$150</button>
+                        <button class="price-filter" data-range="150to250" onclick="filterByPriceRange('150to250')">$150–$250</button>
+                        <button class="price-filter" data-range="over250" onclick="filterByPriceRange('over250')">$250+</button>
+                    </div>
+                </div>
+                <div class="shopper-controls-group">
+                    <label class="control-label">Sort by</label>
+                    <select id="sortSelect" class="sort-select" onchange="applySort()">
+                        <option value="default">Default order</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                        <option value="name-asc">Name: A–Z</option>
+                        <option value="name-desc">Name: Z–A</option>
+                        <option value="tld">By TLD</option>
+                    </select>
+                </div>
+                <div class="shopper-controls-group">
+                    <label class="checkbox-row control-checkbox">
+                        <input type="checkbox" id="availableOnly" onchange="toggleAvailableOnly()">
+                        <span>Available only</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="shopper-stats"><span id="domainResultCount">90</span> domains available</div>
+            <div id="domainShopperGrid" class="shopper-grid"></div>
+        </section>
+
+        <!-- AUTH MODALS -->
+        <div id="authModalOverlay" class="auth-overlay hidden" onclick="closeAuthModal()">
+            <div class="auth-modal" onclick="event.stopPropagation()">
+                <button class="auth-close" onclick="closeAuthModal()">&times;</button>
+                <div class="auth-brand">
+                    <img class="auth-brand-logo" src="image copy.png" alt="DOT DEED">
+                    <span>DOT DEED</span>
+                </div>
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="signin" onclick="switchAuthTab('signin')">Sign In</button>
+                    <button class="auth-tab" data-tab="signup" onclick="switchAuthTab('signup')">Create Account</button>
+                </div>
+
+                <!-- Sign In Form -->
+                <form id="signinForm" class="auth-form" onsubmit="handleSignIn(event)">
+                    <div class="auth-form-group">
+                        <label for="signinUsername">Username</label>
+                        <input type="text" id="signinUsername" class="auth-input" placeholder="Enter your username" required>
+                    </div>
+                    <div class="auth-form-group">
+                        <label for="signinPassword">Password</label>
+                        <input type="password" id="signinPassword" class="auth-input" placeholder="Enter your password" required>
+                    </div>
+                    <div id="signinError" class="auth-error hidden"></div>
+                    <button type="submit" class="auth-submit">Sign In</button>
+                </form>
+
+                <!-- Sign Up Form -->
+                <form id="signupForm" class="auth-form hidden" onsubmit="handleSignUp(event)">
+                    <div class="auth-form-group">
+                        <label for="signupEmail">Email address</label>
+                        <input type="email" id="signupEmail" class="auth-input" placeholder="you@example.com" required>
+                    </div>
+                    <div class="auth-form-group">
+                        <label for="signupUsername">Choose a username</label>
+                        <input type="text" id="signupUsername" class="auth-input" placeholder="e.g. domain_owner" required minlength="3">
+                    </div>
+                    <div class="auth-form-group">
+                        <label for="signupPassword">Create a password</label>
+                        <input type="password" id="signupPassword" class="auth-input" placeholder="At least 6 characters" required minlength="6">
+                    </div>
+                    <div class="auth-form-group">
+                        <label for="signupConfirm">Confirm password</label>
+                        <input type="password" id="signupConfirm" class="auth-input" placeholder="Re-enter your password" required>
+                    </div>
+                    <div id="signupError" class="auth-error hidden"></div>
+                    <div class="auth-benefits">
+                        <span>✓ Personalized Registry ID</span>
+                        <span>✓ Anti-forgery protection</span>
+                        <span>✓ Certificate history</span>
+                    </div>
+                    <button type="submit" class="auth-submit">Create Account</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- VAULT PANEL -->
+        <section id="vault" class="panel vault-panel">
+            <div class="brand-watermark">
+                <img class="watermark-logo" src="image copy.png" alt="">
+                <span class="watermark-text">DOT DEED</span>
+            </div>
+            <div class="vault-header">
+                <div class="hero-badge">DOT DEED · Vault</div>
+                <h1 class="vault-title">Certificate <span class="brand-highlight">Vault</span></h1>
+                <p class="vault-subtitle">Manage and access your <strong>DOT DEED</strong> certificates</p>
+            </div>
+            <div class="vault-content">
+                <div class="vault-empty-state">
+                    <svg class="vault-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="3" y1="9" x2="21" y2="9"/>
+                        <line x1="9" y1="21" x2="9" y2="9"/>
+                    </svg>
+                    <p class="vault-empty">No certificates saved yet.<br>Create your first certificate in the Studio.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABOUT PANEL -->
+        <section id="about" class="panel about-panel">
+            <div class="brand-watermark">
+                <img class="watermark-logo" src="image copy.png" alt="">
+                <span class="watermark-text">DOT DEED</span>
+            </div>
+            <div class="about-header">
+                <div class="hero-badge">DOT DEED · About</div>
+                <h1 class="about-title">About <span class="brand-highlight">DOT DEED</span></h1>
+                <p class="about-subtitle">The Registry of Digital Estates — where domain ownership becomes a treasured keepsake.</p>
+            </div>
+
+            <div class="about-content">
+                <!-- Mission -->
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4"/>
+                            <path d="M12 8h.01"/>
+                        </svg>
+                    </div>
+                    <h2 class="about-card-title">Our Mission</h2>
+                    <p class="about-card-text">
+                        <strong>DOT DEED</strong> is a digital estate registry dedicated to transforming how people perceive and celebrate domain ownership. We craft premium, printable certificates that turn a domain name — a piece of your digital identity — into a tangible, elegant keepsake. Whether for yourself or as a gift, each certificate commemorates your corner of the internet with the dignity it deserves.                    </p>
+                </div>
+
+                <!-- Vision: Domains as Gifts -->
+                <div class="about-card about-card-accent">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                    </div>
+                    <h2 class="about-card-title">Domains as Gifts</h2>
+                    <p class="about-card-text">
+                        At the heart of our vision is the belief that a domain name is more than a web address — it's a meaningful gift. A <strong>DOT DEED</strong> certificate transforms a registered domain into a present that can be framed, gifted, and treasured for years to come. Celebrate milestones, commemorate a brand launch, or surprise someone special with an elegant certificate declaring their digital estate.                    </p>
+                </div>
+
+                <!-- A Place to Work with Domains -->
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                    <h2 class="about-card-title">Your Domain Workspace</h2>
+                    <p class="about-card-text">
+                        <strong>DOT DEED</strong> is your central hub for everything domain-related. Browse premium domains in the <a href="#domain-shopper" onclick="navigateToPanel('#domain-shopper'); return false;">Domain Shopper</a>, design and customize certificates in the <a href="#studio" onclick="navigateToPanel('#studio'); return false;">Studio</a>, and store your collection in the <a href="#vault" onclick="navigateToPanel('#vault'); return false;">Vault</a>. Whether you're a collector, investor, or first-time domain owner, DOT DEED provides the tools to manage, celebrate, and share your digital property with style.                    </p>
+                </div>
+
+                <!-- Registry -->
+                <div class="about-card about-card-dark">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <h2 class="about-card-title">The Registry</h2>
+                    <p class="about-card-text">
+                        Every certificate issued by <strong>DOT DEED</strong> is backed by a unique <strong>Registry ID</strong> — a verifiable identifier that links the certificate holder to their domain. This anti-forgery system ensures each certificate is authentic and one-of-a-kind. Sign up to activate your personal Registry ID and join a growing community of digital estate holders.                    </p>
+                </div>
+            </div>
+
+            <div class="about-cta">
+                <p class="about-cta-text">Ready to create your first certificate?</p>
+                <div class="about-cta-buttons">
+                    <button class="about-cta-btn primary" onclick="navigateToPanel('#storefront'); updateNavActive('#storefront');">Browse Certificates</button>
+                    <button class="about-cta-btn secondary" onclick="navigateToPanel('#domain-shopper'); updateNavActive('#domain-shopper');">Find a Domain</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <div class="footer-logo-wrapper">
+                    <img class="footer-logo-svg" src="image copy.png" alt="DOT DEED">
+                </div>
+                <div class="footer-brand-text-group">
+                    <span class="footer-brand-text">DOT DEED</span>
+                    <span class="footer-brand-tagline">Registry of Digital Estates</span>
+                </div>
+            </div>
+            <div class="footer-links">
+                <a href="#storefront" class="footer-link">Home</a>
+                <a href="#about" class="footer-link">About</a>
+                <a href="#studio" class="footer-link">Studio</a>
+                <a href="#domain-shopper" class="footer-link">Domains</a>
+                <a href="#vault" class="footer-link">Vault</a>
+            </div>
+            <div class="footer-copyright">
+                © 2026 DOT DEED. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Hidden print container -->
+    <div id="printContainer" class="print-container"></div>
+
+    <script src="studio.js"></script>
+</body>
+</html>
