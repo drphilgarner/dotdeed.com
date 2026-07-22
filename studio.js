@@ -1,3 +1,12 @@
+// ===== UTILITY: DEBOUNCE =====
+function debounce(fn, delay = 150) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
 // ===== ACCOUNT SYSTEM (Backend API) =====
 let currentUser = null;
 
@@ -335,6 +344,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Set up navigation
     setupNavigation();
     
+    // Set up debounced preview listeners
+    setupPreviewListeners();
+    
     // Wait for session restore (from API) then update UI
     await restoreSessionPromise;
     updateAuthUI();
@@ -370,6 +382,29 @@ function navigateToPanel(panelId) {
         targetPanel.classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+}
+
+// ===== DEBOUNCED PREVIEW LISTENERS =====
+function setupPreviewListeners() {
+    // Create debounced version here — updatePreview is guaranteed to be defined by DOMContentLoaded
+    const debouncedPreview = debounce(updatePreview);
+    
+    // All studio form inputs that should trigger a live preview update
+    const previewInputs = [
+        'recipientName', 'domainName', 'issueDate', 'certificateUpgrade',
+        'upgradeNotes', 'fontStyle', 'primaryColor', 'secondaryColor',
+        'borderStyle', 'sealStyle', 'paperTexture', 'awardTitle',
+        'cornerOrnamentStyle', 'filigreePattern', 'goldFoilAccent',
+        'frameUpgrade', 'frameWoodType'
+    ];
+
+    previewInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const eventType = el.type === 'text' || el.tagName === 'TEXTAREA' || el.type === 'date'
+            ? 'input' : 'change';
+        el.addEventListener(eventType, debouncedPreview);
+    });
 }
 
 function updateNavActive(hash) {

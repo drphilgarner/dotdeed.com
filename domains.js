@@ -251,61 +251,59 @@ function checkDomainAvailability() {
     resultsDiv.classList.remove('hidden');
     noResults.classList.add('hidden');
     
-    // Simulate network delay for realism
-    setTimeout(() => {
-        let availableCount = 0;
-        let premiumCount = 0;
+    // Immediately compute and render results
+    let availableCount = 0;
+    let premiumCount = 0;
+    
+    const results = popularTLDs.map(({ tld, description, category, popular }) => {
+        const status = isDomainAvailable(name, tld);
+        const price = getDomainPrice(tld);
         
-        const results = popularTLDs.map(({ tld, description, category, popular }) => {
-            const status = isDomainAvailable(name, tld);
-            const price = getDomainPrice(tld);
-            
-            if (status === 'available') availableCount++;
-            if (status === 'premium') premiumCount++;
-            
-            return { name, tld, description, category, popular, status, price };
-        });
+        if (status === 'available') availableCount++;
+        if (status === 'premium') premiumCount++;
         
-        // Sort: available first, then premium, then taken
-        const statusOrder = { available: 0, premium: 1, taken: 2 };
-        results.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+        return { name, tld, description, category, popular, status, price };
+    });
+    
+    // Sort: available first, then premium, then taken
+    const statusOrder = { available: 0, premium: 1, taken: 2 };
+    results.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+    
+    resultsCount.textContent = `${availableCount + premiumCount} available`;
+    
+    resultsList.innerHTML = results.map(r => {
+        const statusConfig = {
+            available: { class: 'status-available', label: 'Available', icon: '&#x2714;' },
+            premium: { class: 'status-premium', label: 'Premium', icon: '&#x2B50;' },
+            taken: { class: 'status-taken', label: 'Taken', icon: '&#x2716;' }
+        };
         
-        resultsCount.textContent = `${availableCount + premiumCount} available`;
+        const cfg = statusConfig[r.status];
+        const isClickable = r.status === 'available' || r.status === 'premium';
         
-        resultsList.innerHTML = results.map(r => {
-            const statusConfig = {
-                available: { class: 'status-available', label: 'Available', icon: '&#x2714;' },
-                premium: { class: 'status-premium', label: 'Premium', icon: '&#x2B50;' },
-                taken: { class: 'status-taken', label: 'Taken', icon: '&#x2716;' }
-            };
-            
-            const cfg = statusConfig[r.status];
-            const isClickable = r.status === 'available' || r.status === 'premium';
-            
-            return `
-                <div class="result-item ${r.status} ${r.popular ? 'popular-tld' : ''}" 
-                     ${isClickable ? `onclick="handleDomainResult('${r.name}', '${r.tld}', '${r.status}', ${r.price})"` : ''}
-                     role="${isClickable ? 'button' : ''}"
-                     tabindex="${isClickable ? '0' : ''}"
-                     title="${isClickable ? 'Click to purchase this domain' : ''}">
-                    <div class="result-tld-info">
-                        <span class="result-tld">${r.tld}</span>
-                        <span class="result-desc">${r.description}</span>
-                        ${r.popular ? '<span class="popular-badge">Popular</span>' : ''}
-                    </div>
-                    <div class="result-status-group">
-                        <span class="result-price">$${r.price.toFixed(2)}/yr</span>
-                        <span class="result-status ${cfg.class}">
-                            ${cfg.icon} ${cfg.label}
-                        </span>
-                    </div>
-                    ${isClickable ? '<span class="result-select-hint">Click to purchase &rarr;</span>' : ''}
+        return `
+            <div class="result-item ${r.status} ${r.popular ? 'popular-tld' : ''}" 
+                 ${isClickable ? `onclick="handleDomainResult('${r.name}', '${r.tld}', '${r.status}', ${r.price})"` : ''}
+                 role="${isClickable ? 'button' : ''}"
+                 tabindex="${isClickable ? '0' : ''}"
+                 title="${isClickable ? 'Click to purchase this domain' : ''}">
+                <div class="result-tld-info">
+                    <span class="result-tld">${r.tld}</span>
+                    <span class="result-desc">${r.description}</span>
+                    ${r.popular ? '<span class="popular-badge">Popular</span>' : ''}
                 </div>
-            `;
-        }).join('');
-        
-        input.style.borderColor = '';
-    }, 600 + Math.random() * 400);
+                <div class="result-status-group">
+                    <span class="result-price">$${r.price.toFixed(2)}/yr</span>
+                    <span class="result-status ${cfg.class}">
+                        ${cfg.icon} ${cfg.label}
+                    </span>
+                </div>
+                ${isClickable ? '<span class="result-select-hint">Click to purchase &rarr;</span>' : ''}
+            </div>
+        `;
+    }).join('');
+    
+    input.style.borderColor = '';
 }
 
 // Handle clicking on an available/premium domain result

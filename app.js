@@ -5,16 +5,39 @@ const frameFee = 10.00;
 const baseDeliveryFee = 6.99;
 const expeditedDeliveryFee = 12.99;
 
+// Cached DOM references for checkout (populated on DOMContentLoaded)
+let checkoutRefs = {};
+
+function cacheCheckoutRefs() {
+    checkoutRefs = {
+        subtotal: document.getElementById('subtotal'),
+        total: document.getElementById('total'),
+        checkoutSubtotal: document.getElementById('checkoutSubtotal'),
+        checkoutUpgrade: document.getElementById('checkoutUpgrade'),
+        deliveryEstimateSummary: document.getElementById('deliveryEstimateSummary'),
+        checkoutTotal: document.getElementById('checkoutTotal'),
+        deliveryEstimate: document.getElementById('deliveryEstimate'),
+        customizationBox: document.getElementById('certificateCustomization'),
+        customizationDetails: document.getElementById('customizationDetails'),
+        frameBox: document.getElementById('certificateFrame'),
+        deliveryAddressLine: document.getElementById('deliveryAddressLine'),
+        deliveryCity: document.getElementById('deliveryCity'),
+        deliveryState: document.getElementById('deliveryState'),
+        deliveryPostal: document.getElementById('deliveryPostal'),
+        deliveryCountry: document.getElementById('deliveryCountry')
+    };
+}
+
 // Set today's date as default
 document.addEventListener('DOMContentLoaded', () => {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('issueDate').value = today;
+    cacheCheckoutRefs();
     setupCheckoutListeners();
 });
 
 function setupCheckoutListeners() {
-    const customizationBox = document.getElementById('certificateCustomization');
-    const customizationDetails = document.getElementById('customizationDetails');
+    const { customizationBox, customizationDetails } = checkoutRefs;
 
     if (customizationBox) {
         customizationBox.addEventListener('change', () => {
@@ -24,7 +47,7 @@ function setupCheckoutListeners() {
     }
 
     ['deliveryAddressLine', 'deliveryCity', 'deliveryState', 'deliveryPostal', 'deliveryCountry'].forEach(id => {
-        const element = document.getElementById(id);
+        const element = checkoutRefs[id];
         if (element) {
             element.addEventListener('input', updateCheckoutTotals);
         }
@@ -102,27 +125,27 @@ function renderCheckoutSummary() {
 
 function updateCheckoutTotals() {
     const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-    const customizationEnabled = document.getElementById('certificateCustomization')?.checked || false;
-    const frameEnabled = document.getElementById('certificateFrame')?.checked || false;
+    const customizationEnabled = checkoutRefs.customizationBox?.checked || false;
+    const frameEnabled = checkoutRefs.frameBox?.checked || false;
     const customizationCost = customizationEnabled ? customizationFee : 0;
     const frameCost = frameEnabled ? frameFee : 0;
     const deliveryCost = calculateDeliveryEstimate();
     const total = subtotal + customizationCost + frameCost + deliveryCost;
 
-    document.getElementById('checkoutSubtotal').textContent = `$${subtotal.toFixed(2)}`;
-    document.getElementById('checkoutUpgrade').textContent = `$${(customizationCost + frameCost).toFixed(2)}`;
-    document.getElementById('deliveryEstimateSummary').textContent = `$${deliveryCost.toFixed(2)}`;
-    document.getElementById('checkoutTotal').textContent = `$${total.toFixed(2)}`;
-    document.getElementById('deliveryEstimate').textContent = `$${deliveryCost.toFixed(2)}`;
+    checkoutRefs.checkoutSubtotal.textContent = `$${subtotal.toFixed(2)}`;
+    checkoutRefs.checkoutUpgrade.textContent = `$${(customizationCost + frameCost).toFixed(2)}`;
+    checkoutRefs.deliveryEstimateSummary.textContent = `$${deliveryCost.toFixed(2)}`;
+    checkoutRefs.checkoutTotal.textContent = `$${total.toFixed(2)}`;
+    checkoutRefs.deliveryEstimate.textContent = `$${deliveryCost.toFixed(2)}`;
 }
 
 function calculateDeliveryEstimate() {
     const addressFields = [
-        document.getElementById('deliveryAddressLine')?.value || '',
-        document.getElementById('deliveryCity')?.value || '',
-        document.getElementById('deliveryState')?.value || '',
-        document.getElementById('deliveryPostal')?.value || '',
-        document.getElementById('deliveryCountry')?.value || ''
+        checkoutRefs.deliveryAddressLine?.value || '',
+        checkoutRefs.deliveryCity?.value || '',
+        checkoutRefs.deliveryState?.value || '',
+        checkoutRefs.deliveryPostal?.value || '',
+        checkoutRefs.deliveryCountry?.value || ''
     ];
     const hasAddress = addressFields.some(value => value.trim().length > 0);
 
@@ -130,7 +153,7 @@ function calculateDeliveryEstimate() {
         return 0;
     }
 
-    const country = (document.getElementById('deliveryCountry')?.value || '').trim().toLowerCase();
+    const country = (checkoutRefs.deliveryCountry?.value || '').trim().toLowerCase();
     const isInternational = country && country !== 'usa' && country !== 'us' && country !== 'united states' && country !== 'united states of america';
 
     return isInternational ? expeditedDeliveryFee : baseDeliveryFee;

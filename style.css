@@ -275,15 +275,15 @@ button, .btn {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.premium-btn {
-    background-color: var(--crimson) !important;
-    border-color: var(--crimson) !important;
+.add-to-cart-btn.premium-btn {
+    background-color: var(--crimson);
+    border-color: var(--crimson);
     color: var(--ivory);
 }
 
-.premium-btn:hover {
-    background-color: #8B1429 !important;
-    border-color: #8B1429 !important;
+.add-to-cart-btn.premium-btn:hover {
+    background-color: #8B1429;
+    border-color: #8B1429;
 }
 
 .generate-btn {

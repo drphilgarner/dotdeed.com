@@ -462,8 +462,6 @@
                             class="form-input" 
                             placeholder="Enter your full name"
                             maxlength="60"
-                            onchange="updatePreview()"
-                            onkeyup="updatePreview()"
                         >
                         <span class="form-hint" id="recipientHint">Will appear as the certificate holder</span>
                     </div>
@@ -476,8 +474,6 @@
                             class="form-input" 
                             placeholder="example.com"
                             maxlength="60"
-                            onchange="updatePreview()"
-                            onkeyup="updatePreview()"
                         >
                         <span class="form-hint">Your domain namespace</span>
                     </div>
@@ -504,7 +500,6 @@
                             type="date" 
                             id="issueDate" 
                             class="form-input"
-                            onchange="updatePreview()"
                         >
                         <span class="form-hint">When the certificate was issued</span>
                     </div>
@@ -512,7 +507,7 @@
                     <div class="form-field">
                         <label class="form-label">Certificate Enhancements</label>
                         <label class="checkbox-row">
-                            <input type="checkbox" id="certificateUpgrade" onchange="updatePreview()">
+                            <input type="checkbox" id="certificateUpgrade">
                             <span>Add custom alterations</span>
                         </label>
                         <span class="form-hint">Included with every certificate package.</span>
@@ -520,7 +515,7 @@
 
                     <div id="upgradeNotesSection" class="form-field hidden">
                         <label for="upgradeNotes" class="form-label">Custom inscription</label>
-                        <textarea id="upgradeNotes" class="form-input" rows="3" placeholder="Commemorating a milestone domain purchase" onchange="updatePreview()" onkeyup="updatePreview()"></textarea>
+                        <textarea id="upgradeNotes" class="form-input" rows="3" placeholder="Commemorating a milestone domain purchase"></textarea>
                         <span class="form-hint">Optional notes for your custom certificate edition.</span>
                     </div>
 
@@ -528,53 +523,53 @@
                         <label class="form-label">Customization options</label>
                         <div class="customization-options">
                             <label for="fontStyle">Font style</label>
-                            <select id="fontStyle" onchange="updatePreview()">
+                            <select id="fontStyle">
                                 <option value="Georgia">Georgia</option>
                                 <option value="Times New Roman">Times New Roman</option>
                                 <option value="Garamond">Garamond</option>
                             </select>
                             <label for="primaryColor">Primary color</label>
-                            <input type="color" id="primaryColor" value="#6B0B22" onchange="updatePreview()">
+                            <input type="color" id="primaryColor" value="#6B0B22">
                             <label for="secondaryColor">Secondary color</label>
-                            <input type="color" id="secondaryColor" value="#D62828" onchange="updatePreview()">
+                            <input type="color" id="secondaryColor" value="#D62828">
                             <label for="borderStyle">Border style</label>
-                            <select id="borderStyle" onchange="updatePreview()">
+                            <select id="borderStyle">
                                 <option value="classic">Classic</option>
                                 <option value="double">Double</option>
                                 <option value="ornate">Ornate</option>
                             </select>
                             <label for="sealStyle">Seal / Crest style</label>
-                            <select id="sealStyle" onchange="updatePreview()">
+                            <select id="sealStyle">
                                 <option value="classic">Classic Round</option>
                                 <option value="shield">Shield Crest</option>
                                 <option value="modern">Modern Minimal</option>
                                 <option value="ornate">Ornate Ring</option>
                             </select>
                             <label for="paperTexture">Paper texture</label>
-                            <select id="paperTexture" onchange="updatePreview()">
+                            <select id="paperTexture">
                                 <option value="smooth">Smooth Premium</option>
                                 <option value="parchment">Parchment</option>
                                 <option value="linen">Linen</option>
                                 <option value="vellum">Vellum Antique</option>
                             </select>
                             <label for="awardTitle" class="full-width">Award title</label>
-                            <input type="text" id="awardTitle" class="form-input full-width" placeholder="Digital Domain Holder" onchange="updatePreview()" onkeyup="updatePreview()">
+                            <input type="text" id="awardTitle" class="form-input full-width" placeholder="Digital Domain Holder">
                             <label for="cornerOrnamentStyle">Corner ornament style</label>
-                            <select id="cornerOrnamentStyle" onchange="updatePreview()">
+                            <select id="cornerOrnamentStyle">
                                 <option value="classic">Classic</option>
                                 <option value="victorian">Victorian</option>
                                 <option value="artdeco">Art Deco</option>
                                 <option value="none">None</option>
                             </select>
                             <label for="filigreePattern">Filigree pattern</label>
-                            <select id="filigreePattern" onchange="updatePreview()">
+                            <select id="filigreePattern">
                                 <option value="none">None</option>
                                 <option value="subtle">Subtle</option>
                                 <option value="ornate">Ornate</option>
                                 <option value="geometric">Geometric</option>
                             </select>
                             <label class="checkbox-row full-width" style="margin-top: 0.5rem;">
-                                <input type="checkbox" id="goldFoilAccent" onchange="updatePreview()">
+                                <input type="checkbox" id="goldFoilAccent">
                                 <span>Gold foil accents</span>
                             </label>
                             <span class="full-width form-hint" style="margin-top: 0;">Metallic gold shimmer on all key elements.</span>
@@ -583,7 +578,7 @@
 
                     <div class="form-field">
                         <label class="checkbox-row">
-                            <input type="checkbox" id="frameUpgrade" onchange="updatePreview()">
+                            <input type="checkbox" id="frameUpgrade">
                             <span>Add frame</span>
                         </label>
                         <span class="form-hint">Choose a premium wood finish for your display frame.</span>
@@ -591,7 +586,7 @@
 
                     <div id="frameOptionsSection" class="form-field hidden">
                         <label class="form-label">Frame wood type</label>
-                        <select id="frameWoodType" onchange="updatePreview()">
+                        <select id="frameWoodType">
                             <option value="walnut">Walnut</option>
                             <option value="oak">Oak</option>
                             <option value="mahogany">Mahogany</option>
