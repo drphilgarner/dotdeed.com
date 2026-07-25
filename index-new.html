@@ -11,7 +11,7 @@
     <!-- HEADER & NAVIGATION -->
     <header class="header" id="siteHeader">
         <div class="header-container">
-            <div class="logo">
+            <div class="logo" onclick="navigateToPanel('#storefront'); updateNavActive('#storefront');" style="cursor:pointer;">
                 <div class="logo-icon-wrapper">
                     <img class="logo-svg" src="image copy.png" alt="DOT DEED">
                 </div>
@@ -73,6 +73,9 @@
                         </button>
                     </div>
                     <p class="s-hero-meta">No credit card required · Free Registry ID included</p>
+                    <p class="s-hero-meta" style="margin-top: 0.25rem; font-size: 0.75rem;">
+                        <a href="#registry-info" onclick="navigateToPanel('#registry-info'); updateNavActive('#registry-info'); return false;" class="auth-hint-link">The importance of Registry ID</a>
+                    </p>
                 </div>
                 <div class="s-hero-visual">
                     <div class="s-hero-image-frame">
@@ -119,7 +122,7 @@
                     <p class="s-section-sub">From elegant certificates to domain discovery — DOT DEED is your complete workspace.</p>
                 </div>
                 <div class="s-features-grid">
-                    <div class="s-feature-card" onclick="navigateToPanel('#studio'); updateNavActive('#studio');">
+                    <div class="s-feature-card" onclick="navigateToPanel('#certificates-info'); updateNavActive('#certificates-info');">
                         <div class="s-feature-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
@@ -152,7 +155,7 @@
                         <p class="s-feature-desc">Store, manage, and access all your certificates. Your digital estate, organized and secure.</p>
                         <span class="s-feature-link">Open vault →</span>
                     </div>
-                    <div class="s-feature-card" onclick="navigateToPanel('#studio'); updateNavActive('#studio');">
+                    <div class="s-feature-card" onclick="navigateToPanel('#registry-info'); updateNavActive('#registry-info');">
                         <div class="s-feature-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
@@ -317,6 +320,66 @@
                             Browse Domains
                         </button>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CERTIFICATES INFO PANEL -->
+        <section id="certificates-info" class="panel about-panel">
+            <div class="brand-watermark">
+                <img class="watermark-logo" src="image copy.png" alt="">
+                <span class="watermark-text">DOT DEED</span>
+            </div>
+            <div class="about-header">
+                <div class="hero-badge">DOT DEED · Certificates</div>
+                <h1 class="about-title">Why Own a <span class="brand-highlight">Custom Certificate</span>?</h1>
+                <p class="storefront-subtitle">A domain is more than a URL — it's a piece of your identity.</p>
+            </div>
+
+            <div class="about-grid">
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <h2 class="about-card-title">A Tangible Keepsake</h2>
+                    <p class="about-card-text">
+                        Your domain lives in the cloud — but your connection to it deserves to be physical. A <strong>DOT DEED</strong> certificate transforms your digital property into a beautiful, printable document you can frame, display, and treasure.
+                    </p>
+                </div>
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    </div>
+                    <h2 class="about-card-title">The Perfect Gift</h2>
+                    <p class="about-card-text">
+                        Surprise someone with a framed certificate declaring their very own corner of the internet. Birthdays, business launches, milestones — a <strong>DOT DEED</strong> certificate is a meaningful, memorable gift that lasts a lifetime.
+                    </p>
+                </div>
+                <div class="about-card about-card-dark">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h2 class="about-card-title">Proof of Digital Ownership</h2>
+                    <p class="about-card-text">
+                        Your certificate is more than decoration — it's a <strong>statement of stewardship</strong>. With a unique Registry ID, your certificate links directly to your domain, serving as an official deed to your digital estate.
+                    </p>
+                </div>
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </div>
+                    <h2 class="about-card-title">Fully Customizable</h2>
+                    <p class="about-card-text">
+                        Choose from <strong>Essential</strong>, <strong>Premium</strong>, or <strong>Elite</strong> tiers — each with its own level of elegance. Add custom colors, fonts, seals, gold foil, framing, and even a matching business card. Your certificate, your way.
+                    </p>
+                </div>
+            </div>
+
+            <div class="about-cta">
+                <p class="about-cta-text">Ready to create your own certificate?</p>
+                <div class="about-cta-buttons">
+                    <button class="about-cta-btn primary" onclick="navigateToPanel('#tier-select'); updateNavActive('#tier-select');">Get Started</button>
+                    <button class="about-cta-btn secondary" onclick="navigateToPanel('#storefront'); updateNavActive('#storefront');">Back to Home</button>
                 </div>
             </div>
         </section>
@@ -491,7 +554,8 @@
                             >
                             <span class="registry-lock-icon" title="Protected ID">🔒</span>
                         </div>
-                        <span class="form-hint">Your unique registry identifier — <a href="#" onclick="openAuthModal(); return false;" class="auth-hint-link">sign in</a> to activate. Prevents forgery.</span>
+                        <span id="registryIdHint" class="form-hint">Your unique registry identifier — <a href="#" onclick="openAuthModal(); return false;" class="auth-hint-link">sign in</a> to activate. Prevents forgery.</span>
+                        <span id="registryIdGuestHint" class="form-hint hidden">A <a href="#registry-info" onclick="navigateToPanel('#registry-info'); updateNavActive('#registry-info'); return false;" class="auth-hint-link">Registry ID</a> can help create a more secure domain certificate. <a href="#" onclick="openAuthModal(); return false;" class="auth-hint-link">Sign in</a> to get yours.</span>
                     </div>
 
                     <div class="form-field">
@@ -504,7 +568,7 @@
                         <span class="form-hint">When the certificate was issued</span>
                     </div>
 
-                    <div class="form-field">
+                    <div id="certificateUpgradeSection" class="form-field">
                         <label class="form-label">Certificate Enhancements</label>
                         <label class="checkbox-row">
                             <input type="checkbox" id="certificateUpgrade">
@@ -576,7 +640,7 @@
                         </div>
                     </div>
 
-                    <div class="form-field">
+                    <div id="frameUpgradeSection" class="form-field">
                         <label class="checkbox-row">
                             <input type="checkbox" id="frameUpgrade">
                             <span>Add frame</span>
@@ -599,7 +663,7 @@
                             <input type="checkbox" id="businessCardOption" onchange="onBizCardToggle()">
                             <span>Include business card presentation</span>
                         </label>
-                        <span class="form-hint">Elite certificates can be paired with a matching business card layout.</span>
+                        <span class="form-hint">Premium and Elite certificates can be paired with a matching business card layout.</span>
                         <button id="openBizCardBtn" class="bizcard-open-btn hidden" onclick="openBizCardEditor()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                             Customize Business Card
@@ -609,7 +673,6 @@
 
 
                     <div class="form-actions">
-                        <button class="btn-export" onclick="exportCertificate()">Export as PDF</button>
                         <button class="btn-print" onclick="printCertificate()">Print Certificate</button>
                     </div>
                 </div>
@@ -822,6 +885,7 @@
                     </div>
                     <div id="signinError" class="auth-error hidden"></div>
                     <button type="submit" class="auth-submit">Sign In</button>
+                    <button type="button" class="auth-submit guest-btn" onclick="handleGuestLogin()">Sign In as Guest</button>
                 </form>
 
                 <!-- Sign Up Form -->
@@ -934,6 +998,13 @@
                     <div class="about-card-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <h2 class="about-card-title">The Registry</h2>
+                    <p class="about-card-text">
+                        Every certificate issued by <strong>DOT DEED</strong> is backed by a unique <strong>Registry ID</strong> — a verifiable identifier that links the certificate holder to their domain. This anti-forgery system ensures each certificate is authentic and one-of-a-kind. <a href="#registry-info" onclick="navigateToPanel('#registry-info'); updateNavActive('#registry-info'); return false;">Learn more about Registry IDs →</a> Sign up to activate your personal Registry ID and join a growing community of digital estate holders.                    </p>
+                </div>
                         </svg>
                     </div>
                     <h2 class="about-card-title">The Registry</h2>
@@ -947,6 +1018,54 @@
                 <div class="about-cta-buttons">
                     <button class="about-cta-btn primary" onclick="navigateToPanel('#storefront'); updateNavActive('#storefront');">Browse Certificates</button>
                     <button class="about-cta-btn secondary" onclick="navigateToPanel('#domain-shopper'); updateNavActive('#domain-shopper');">Find a Domain</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- REGISTRY ID INFO PANEL -->
+        <section id="registry-info" class="panel about-panel">
+            <div class="brand-watermark">
+                <img class="watermark-logo" src="image copy.png" alt="">
+                <span class="watermark-text">DOT DEED</span>
+            </div>
+            <div class="about-header">
+                <div class="hero-badge">DOT DEED · Security</div>
+                <h1 class="about-title">The Importance of <span class="brand-highlight">Registry ID</span></h1>
+                <p class="storefront-subtitle">Why every certificate needs a verified identity.</p>
+            </div>
+
+            <div class="about-grid">
+                <div class="about-card">
+                    <h2 class="about-card-title">What is a Registry ID?</h2>
+                    <p class="about-card-text">
+                        A <strong>Registry ID</strong> is a unique, anti-forgery identifier assigned to every verified user of <strong>DOT DEED</strong>. It links the certificate holder to their domain and acts as a digital watermark of authenticity.
+                    </p>
+                </div>
+                <div class="about-card">
+                    <h2 class="about-card-title">Why it matters</h2>
+                    <p class="about-card-text">
+                        Without a Registry ID, anyone could claim ownership of any domain. The Registry ID ensures that your certificate is <strong>provably yours</strong> — backed by the DOT DEED registry and tied to your verified identity.
+                    </p>
+                </div>
+                <div class="about-card">
+                    <h2 class="about-card-title">Anti-Forgery Protection</h2>
+                    <p class="about-card-text">
+                        Each certificate without a Registry ID is marked as <strong>unofficial</strong>. A Registry ID adds a cryptographic layer that makes your certificate tamper-evident and officially recognized by the DOT DEED registry.
+                    </p>
+                </div>
+                <div class="about-card">
+                    <h2 class="about-card-title">How to get yours</h2>
+                    <p class="about-card-text">
+                        Signing up for a free DOT DEED account takes less than a minute. Once registered, you'll receive your personal Registry ID instantly. It will be automatically embedded in every certificate you create.
+                    </p>
+                </div>
+            </div>
+
+            <div class="about-cta">
+                <p class="about-cta-text">Secure your certificates with a Registry ID</p>
+                <div class="about-cta-buttons">
+                    <button class="about-cta-btn primary" onclick="openAuthModal()">Sign Up Free</button>
+                    <button class="about-cta-btn secondary" onclick="navigateToPanel('#storefront'); updateNavActive('#storefront');">Back to Home</button>
                 </div>
             </div>
         </section>
@@ -979,6 +1098,29 @@
 
     <!-- Hidden print container -->
     <div id="printContainer" class="print-container"></div>
+
+    <!-- PAYMENT SUMMARY MODAL -->
+    <div id="paymentModalOverlay" class="auth-overlay hidden" onclick="closePaymentModal()">
+        <div class="payment-modal" onclick="event.stopPropagation()">
+            <button class="auth-close" onclick="closePaymentModal()">&times;</button>
+            <div class="payment-brand">
+                <img class="auth-brand-logo" src="image copy.png" alt="DOT DEED">
+                <span>DOT DEED</span>
+            </div>
+            <h2 class="payment-title">Order Summary</h2>
+            <div class="payment-items" id="paymentItems">
+                <!-- Dynamically populated -->
+            </div>
+            <div class="payment-total">
+                <span class="payment-total-label">Total</span>
+                <span class="payment-total-amount" id="paymentTotalAmount">$0.00</span>
+            </div>
+            <div class="payment-actions">
+                <button class="btn-print" onclick="confirmPayment()">Confirm &amp; Print</button>
+                <button class="btn-cancel" onclick="closePaymentModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <script src="studio.js"></script>
 </body>

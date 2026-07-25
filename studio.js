@@ -80,6 +80,24 @@ async function handleSignIn(e) {
     showNotification(`Welcome back, ${result.username}!`);
 }
 
+async function handleGuestLogin() {
+    const errorEl = document.getElementById('signinError');
+    errorEl.classList.add('hidden');
+
+    try {
+        const result = await api('/api/guest', {});
+        if (result.error) { showAuthError(errorEl, result.error); return; }
+
+        currentUser = { username: result.username, registryId: result.registryId, isGuest: true };
+        updateAuthUI();
+        updateRegistryIdField();
+        closeAuthModal();
+        showNotification(`Logged in as ${result.username} (guest)`);
+    } catch (err) {
+        showAuthError(errorEl, 'Server unavailable. Make sure the server is running.');
+    }
+}
+
 function showAuthError(el, message) {
     el.textContent = message;
     el.classList.remove('hidden');
@@ -112,14 +130,21 @@ function updateAuthUI() {
 function updateRegistryIdField() {
     const field = document.getElementById('registryId');
     const wrapper = field?.closest('.registry-id-wrapper');
-    if (currentUser) {
+    const hint = document.getElementById('registryIdHint');
+    const guestHint = document.getElementById('registryIdGuestHint');
+    
+    if (currentUser && !currentUser.isGuest) {
         field.value = currentUser.registryId;
         field.readOnly = true;
         if (wrapper) wrapper.classList.add('active');
+        if (hint) hint.classList.remove('hidden');
+        if (guestHint) guestHint.classList.add('hidden');
     } else {
         field.value = '';
         field.readOnly = true;
         if (wrapper) wrapper.classList.remove('active');
+        if (hint) hint.classList.add('hidden');
+        if (guestHint) guestHint.classList.remove('hidden');
     }
     if (typeof updatePreview === 'function') updatePreview();
 }
@@ -307,11 +332,25 @@ let currentCertificate = {
     type: 'Essential',
     recipientName: '',
     domainName: '',
+    domainPrice: 0,
     registryId: '',
     issueDate: new Date().toISOString().split('T')[0],
     customizationEnabled: false,
     customizationNotes: ''
 };
+
+// ===== PRICING =====
+const CERT_PRICES = {
+    Essential: 15,
+    Premium: 30,
+    Elite: 50
+};
+
+function getDomainPrice(domainName) {
+    if (!domainName || domainName === '[domain.com]') return 0;
+    const domain = domainShopperCatalog.find(d => d.name === domainName);
+    return domain ? domain.price : 0;
+}
 
 // ===== DARK MODE =====
 function initDarkMode() {
@@ -741,6 +780,7 @@ function selectDomainForCertificate(domainName) {
     // Store the selected domain
     currentCertificate.domainName = domainName;
     currentCertificate.preselectedDomain = domainName;
+    currentCertificate.domainPrice = getDomainPrice(domainName);
     
     // Show notification
     showNotification(`Domain ${domainName} selected! Choose your certificate tier.`);
@@ -771,10 +811,24 @@ function selectTier(tier) {
 function updatePreview() {
     currentCertificate.recipientName = document.getElementById('recipientName').value || '[Your Name]';
     currentCertificate.domainName = document.getElementById('domainName').value || '[domain.com]';
+    currentCertificate.domainPrice = getDomainPrice(currentCertificate.domainName);
     currentCertificate.registryId = document.getElementById('registryId').value || fallbackRegistryId();
     currentCertificate.issueDate = document.getElementById('issueDate').value || new Date().toISOString().split('T')[0];
     currentCertificate.customizationEnabled = document.getElementById('certificateUpgrade').checked;
     currentCertificate.customizationNotes = document.getElementById('upgradeNotes').value || '';
+
+    // Apply tier-based add-on visibility
+    const tier = currentCertificate.type;
+    const isEssential = tier === 'Essential';
+    const frameUpgradeSection = document.getElementById('frameUpgradeSection');
+    const certUpgradeSection = document.getElementById('certificateUpgradeSection');
+    if (frameUpgradeSection) frameUpgradeSection.classList.toggle('hidden', isEssential);
+    if (certUpgradeSection) certUpgradeSection.classList.toggle('hidden', isEssential);
+    if (isEssential) {
+        document.getElementById('frameUpgrade').checked = false;
+        document.getElementById('businessCardOption').checked = false;
+        document.getElementById('certificateUpgrade').checked = false;
+    }
 
     const upgradeNotesSection = document.getElementById('upgradeNotesSection');
     if (upgradeNotesSection) {
@@ -792,7 +846,8 @@ function updatePreview() {
         frameOptionsSection.classList.toggle('hidden', !document.getElementById('frameUpgrade').checked);
     }
     if (businessCardSection) {
-        businessCardSection.classList.toggle('hidden', currentCertificate.type.toLowerCase() !== 'elite');
+        const type = currentCertificate.type.toLowerCase();
+        businessCardSection.classList.toggle('hidden', type === 'essential');
     }
 
     const certHTML = renderCertificate(currentCertificate);
@@ -1102,7 +1157,7 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// ===== EXPORT & PRINT FUNCTIONS =====
+// ===== EXPORT, PRINT & PAYMENT FUNCTIONS =====
 function printCertificate() {
     // Validate inputs
     if (!document.getElementById('recipientName').value) {
@@ -1114,6 +1169,85 @@ function printCertificate() {
         return;
     }
     
+    // Show payment summary instead of printing directly
+    showPaymentSummary();
+}
+
+function showPaymentSummary() {
+    const type = currentCertificate.type;
+    const certPrice = CERT_PRICES[type] || 15;
+    const domainPrice = currentCertificate.domainPrice || 0;
+    const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
+    const hasBizCard = document.getElementById('businessCardOption')?.checked || false;
+    
+    let itemsHtml = '';
+    let total = 0;
+    
+    // Certificate item
+    const typeLabel = type === 'Elite' ? 'Elite (all add-ons included)' : type === 'Premium' ? 'Premium (alterations included)' : type;
+    itemsHtml += `
+        <div class="payment-item">
+            <div class="payment-item-label">
+                <span class="payment-item-name">${typeLabel} Certificate</span>
+                <span class="payment-item-desc">Digital domain ownership certificate</span>
+            </div>
+            <span class="payment-item-price">$${certPrice.toFixed(2)}</span>
+        </div>`;
+    total += certPrice;
+    
+    // Domain item (if purchased)
+    if (domainPrice > 0) {
+        itemsHtml += `
+            <div class="payment-item">
+                <div class="payment-item-label">
+                    <span class="payment-item-name">Domain: ${escapeHtml(currentCertificate.domainName)}</span>
+                    <span class="payment-item-desc">Premium domain registration</span>
+                </div>
+                <span class="payment-item-price">$${domainPrice.toFixed(2)}</span>
+            </div>`;
+        total += domainPrice;
+    }
+    
+    // Frame add-on (tier-based pricing)
+    if (hasFrame) {
+        const framePrice = type === 'Elite' ? 0 : 12;
+        itemsHtml += `
+            <div class="payment-item">
+                <div class="payment-item-label">
+                    <span class="payment-item-name">Display Frame</span>
+                    <span class="payment-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Premium wood finish frame'}</span>
+                </div>
+                <span class="payment-item-price">${type === 'Elite' ? 'FREE' : '$12.00'}</span>
+            </div>`;
+        total += framePrice;
+    }
+    
+    // Business card add-on (tier-based pricing)
+    if (hasBizCard) {
+        const bizCardPrice = type === 'Elite' ? 0 : 8;
+        itemsHtml += `
+            <div class="payment-item">
+                <div class="payment-item-label">
+                    <span class="payment-item-name">Business Card</span>
+                    <span class="payment-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Matching business card layout'}</span>
+                </div>
+                <span class="payment-item-price">${type === 'Elite' ? 'FREE' : '$8.00'}</span>
+            </div>`;
+        total += bizCardPrice;
+    }
+    
+    document.getElementById('paymentItems').innerHTML = itemsHtml;
+    document.getElementById('paymentTotalAmount').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('paymentModalOverlay').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModalOverlay').classList.add('hidden');
+}
+
+function confirmPayment() {
+    closePaymentModal();
+    
     // Copy the certificate to print container
     const printContainer = document.getElementById('printContainer');
     const certificateCanvas = document.getElementById('certificatePreview').innerHTML;
@@ -1123,411 +1257,12 @@ function printCertificate() {
         </div>
     `;
     
+    showNotification('Payment confirmed! Printing certificate...');
+    
     // Trigger print dialog
     setTimeout(() => {
         window.print();
     }, 100);
-}
-
-function exportCertificate() {
-    // Validate inputs
-    if (!document.getElementById('recipientName').value) {
-        alert('Please enter your name');
-        return;
-    }
-    if (!document.getElementById('domainName').value) {
-        alert('Please enter your domain name');
-        return;
-    }
-    
-    const cert = currentCertificate;
-    const formattedDate = formatDate(cert.issueDate);
-    
-    // Create comprehensive HTML document
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DOT DEED Certificate - ${escapeHtml(cert.domainName)}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background-color: #f5f5f7;
-            padding: 20px;
-            font-family: Garamond, Georgia, "Times New Roman", serif;
-        }
-        
-        .export-container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .certificate-canvas {
-            background-color: #ffffff;
-            border: 1px solid #d2d2d7;
-            border-radius: 12px;
-            padding: 30px;
-            min-height: 600px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            color: #1d1d1f;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        
-        .certificate-wrapper {
-            width: 100%;
-            height: 100%;
-            padding: 36px 40px;
-            background-color: #ffffff;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            overflow: hidden;
-        }
-        
-        .certificate-wrapper::before {
-            content: '';
-            position: absolute;
-            inset: 6px;
-            border: 1px solid #6B0B22;
-            pointer-events: none;
-            opacity: 0.5;
-        }
-        
-        .certificate-wrapper::after {
-            content: '';
-            position: absolute;
-            inset: 10px;
-            border: 2px double #6B0B22;
-            pointer-events: none;
-            opacity: 0.4;
-        }
-        
-        .cert-watermark-logo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: min(55%, 280px);
-            height: auto;
-            opacity: 0.035;
-            pointer-events: none;
-            user-select: none;
-            z-index: 1;
-        }
-        
-        .corner {
-            position: absolute;
-            width: 28px;
-            height: 28px;
-            border: 2px solid #6B0B22;
-            z-index: 5;
-            opacity: 0.5;
-        }
-        .corner-tl { top: 14px; left: 14px; border-right: none; border-bottom: none; }
-        .corner-tr { top: 14px; right: 14px; border-left: none; border-bottom: none; }
-        .corner-bl { bottom: 14px; left: 14px; border-right: none; border-top: none; }
-        .corner-br { bottom: 14px; right: 14px; border-left: none; border-top: none; }
-        
-        .certificate-inner {
-            position: relative;
-            z-index: 2;
-            width: 100%;
-            max-width: 540px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        
-        .cert-motto {
-            font-size: 0.7rem;
-            letter-spacing: 4px;
-            color: #a1a1a6;
-            text-transform: uppercase;
-            margin-bottom: 0.2rem;
-        }
-        
-        .cert-divider {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 70%;
-            margin: 0.25rem auto;
-        }
-        .divider-line { flex: 1; height: 1px; background: #6B0B22; opacity: 0.3; }
-        .divider-ornament { font-size: 1.1rem; color: #6B0B22; opacity: 0.5; line-height: 1; }
-        
-        .cert-seal-large { margin: 0.5rem 0 0.3rem; }
-        .seal-svg { width: 80px; height: 80px; }
-        
-        .cert-institution {
-            font-size: 2.2rem;
-            font-weight: 800;
-            letter-spacing: 8px;
-            text-transform: uppercase;
-            color: #6B0B22;
-        }
-        .cert-department {
-            font-size: 0.75rem;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: #D62828;
-            margin-top: 0.2rem;
-            opacity: 0.8;
-        }
-        
-        .cert-body {
-            margin: 0.3rem 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.3rem;
-        }
-        
-        .cert-preface {
-            font-size: 0.85rem;
-            color: #86868b;
-            font-style: italic;
-            line-height: 1.5;
-            max-width: 480px;
-        }
-        
-        .cert-recipient {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1d1d1f;
-            padding: 0.5rem 1.5rem;
-            min-height: 40px;
-            letter-spacing: 1px;
-            position: relative;
-        }
-        .cert-recipient::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 15%;
-            right: 15%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #6B0B22, transparent);
-        }
-        
-        .cert-degree {
-            font-size: 1.1rem;
-            font-weight: 600;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: #6B0B22;
-            padding: 0.4rem 0;
-            border-top: 1px solid #D62828;
-            border-bottom: 1px solid #D62828;
-            display: inline-block;
-        }
-        
-        .cert-domain-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            margin: 0.2rem 0;
-            flex-wrap: wrap;
-        }
-        .cert-domain-label {
-            font-size: 0.75rem;
-            color: #a1a1a6;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-style: italic;
-        }
-        .cert-domain {
-            background-color: #6B0B22;
-            color: #ffffff;
-            padding: 6px 16px;
-            font-family: Monaco, 'Courier New', monospace;
-            font-size: 0.95rem;
-            letter-spacing: 0.5px;
-            border-radius: 2px;
-            display: inline-block;
-        }
-        
-        .cert-footer {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 2rem;
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            width: 100%;
-        }
-        .signature-block { width: 120px; text-align: center; }
-        .signature-line { height: 2px; background: #6B0B22; margin-bottom: 6px; opacity: 0.6; }
-        .signature-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #6B0B22; }
-        .signature-title { font-size: 0.6rem; color: #a1a1a6; letter-spacing: 0.5px; margin-top: 2px; font-style: italic; }
-        .signature-seal { opacity: 0.5; }
-        
-        .cert-bottom {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.15rem;
-            margin-top: 0.3rem;
-            width: 100%;
-        }
-        .cert-date { font-size: 0.7rem; color: #86868b; letter-spacing: 1px; font-style: italic; }
-        .cert-id { font-size: 0.6rem; color: #a1a1a6; letter-spacing: 0.5px; }
-        
-        .export-info {
-            margin-top: 40px;
-            padding: 20px;
-            background-color: #f5f5f7;
-            border-radius: 12px;
-            text-align: center;
-            color: #86868b;
-            font-size: 0.85rem;
-        }
-        
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-            }
-            
-            .export-info {
-                display: none;
-            }
-            
-            .certificate-canvas {
-                border: none;
-                box-shadow: none;
-                border-radius: 0;
-                padding: 0;
-                margin: 0;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="export-container">
-        <div class="certificate-canvas">
-            <div class="certificate-wrapper">
-                <div class="certificate-inner">
-                    <div class="cert-top">
-                        <div class="cert-motto">VERITAS · DIGITALIS · HONOR</div>
-                        <div class="cert-divider">
-                            <span class="divider-line"></span>
-                            <span class="divider-ornament">❧</span>
-                        </div>
-                        <div class="cert-seal-large">
-                            <svg class="seal-svg" viewBox="0 0 120 120" fill="none">
-                                <circle cx="60" cy="60" r="56" stroke="#6B0B22" stroke-width="2" fill="none"/>
-                                <circle cx="60" cy="60" r="50" stroke="#6B0B22" stroke-width="0.5" fill="none"/>
-                                <circle cx="60" cy="60" r="44" stroke="#D62828" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
-                                <path d="M 40 60 L 60 45 L 80 60 L 60 75 Z" fill="#6B0B2218" stroke="#6B0B22" stroke-width="1"/>
-                                <circle cx="60" cy="60" r="6" fill="#D62828"/>
-                                <text x="60" y="58" text-anchor="middle" font-size="8" font-weight="bold" fill="#6B0B22" font-family="serif">DD</text>
-                            </svg>
-                        </div>
-                        <div class="cert-institution">DOT DEED</div>
-                        <div class="cert-department">Registry of Digital Estates</div>
-                        <div class="cert-divider">
-                            <span class="divider-line"></span>
-                            <span class="divider-ornament">⚜</span>
-                            <span class="divider-line"></span>
-                        </div>
-                    </div>
-
-                    <div class="cert-body">
-                        <div class="cert-preface" style="color: #6B0B22;">
-                            By the authority vested in the Registry of Digital Estates, it is hereby certified that
-                        </div>
-                        
-                        <div class="cert-recipient">
-                            ${escapeHtml(cert.recipientName)}
-                        </div>
-                        
-                        <div class="cert-preface">
-                            having fulfilled all requirements and demonstrated rightful stewardship, is hereby granted the title of
-                        </div>
-                        
-                        <div class="cert-degree" style="color: #6B0B22; border-color: #D62828;">
-                            Digital Domain Holder
-                        </div>
-                        
-                        <div class="cert-domain-wrapper">
-                            <span class="cert-domain-label">Network Namespace:</span>
-                            <span class="cert-domain" style="background: #6B0B22;">
-                                ${escapeHtml(cert.domainName).toLowerCase()}
-                            </span>
-                        </div>
-                        
-                        <div class="cert-preface" style="font-size: 0.85rem;">
-                            In witness whereof, this certificate is issued under the seal of the Registry and attested by the undersigned officers.
-                        </div>
-                    </div>
-
-                    <div class="cert-footer">
-                        <div class="signature-block">
-                            <div class="signature-line"></div>
-                            <div class="signature-label">Registrar</div>
-                            <div class="signature-title">Officer of the Registry</div>
-                        </div>
-                        <div class="signature-seal">
-                            <svg viewBox="0 0 40 40" width="40" height="40">
-                                <circle cx="20" cy="20" r="18" stroke="#6B0B22" stroke-width="1" fill="none"/>
-                                <text x="20" y="22" text-anchor="middle" font-size="10" font-weight="bold" fill="#D62828" font-family="serif">DD</text>
-                            </svg>
-                        </div>
-                        <div class="signature-block">
-                            <div class="signature-line"></div>
-                            <div class="signature-label">Chancellor</div>
-                            <div class="signature-title">Dean of Digital Estates</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="cert-bottom">
-                    <div class="cert-divider">
-                        <span class="divider-line" style="opacity: 0.3;"></span>
-                    </div>
-                    <div class="cert-date">Issued this ${formattedDate}</div>
-                    <div class="cert-id">Certificate No. ${cert.registryId}</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="export-info">
-            <p>Certificate Type: ${cert.type} | Domain: ${escapeHtml(cert.domainName)} | Issued: ${formattedDate}</p>
-            <p style="margin-top: 10px; font-size: 0.8rem;">DOT DEED • Registry of Digital Estates © 2026</p>
-        </div>
-    </div>
-</body>
-</html>
-    `;
-    
-    // Create blob and download
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `certificate-${cert.domainName.replace(/[^a-z0-9]/gi, '_')}-${Date.now()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification('Certificate exported successfully');
 }
 
 // ===== NOTIFICATIONS =====

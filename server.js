@@ -144,6 +144,31 @@ app.post('/api/logout', (req, res) => {
     req.session.destroy(() => res.json({ message: 'Signed out' }));
 });
 
+// Guest Login (for testing)
+app.post('/api/guest', (req, res) => {
+    try {
+        const guestNum = Date.now().toString(36).toUpperCase();
+        const username = `Guest-${guestNum.slice(-4)}`;
+        const email = `${username.toLowerCase()}@guest.local`;
+        const passwordHash = bcrypt.hashSync('guest', 10);
+        const registryId = generateRegistryId();
+
+        const result = db.prepare(
+            'INSERT INTO users (username, email, password_hash, registry_id) VALUES (?, ?, ?, ?)'
+        ).run(username, email, passwordHash, registryId);
+
+        req.session.userId = result.lastInsertRowid;
+        req.session.username = username;
+        req.session.registryId = registryId;
+
+        res.json({ username, registryId, message: 'Logged in as guest' });
+
+    } catch (err) {
+        console.error('Guest login error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // ===== STATIC FILES (after API routes) =====
 // Don't serve index.html automatically — use index-new.html instead
 app.use(express.static(__dirname, { index: false }));
