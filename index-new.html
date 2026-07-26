@@ -1099,28 +1099,97 @@
     <!-- Hidden print container -->
     <div id="printContainer" class="print-container"></div>
 
-    <!-- PAYMENT SUMMARY MODAL -->
-    <div id="paymentModalOverlay" class="auth-overlay hidden" onclick="closePaymentModal()">
-        <div class="payment-modal" onclick="event.stopPropagation()">
-            <button class="auth-close" onclick="closePaymentModal()">&times;</button>
-            <div class="payment-brand">
-                <img class="auth-brand-logo" src="image copy.png" alt="DOT DEED">
-                <span>DOT DEED</span>
-            </div>
-            <h2 class="payment-title">Order Summary</h2>
-            <div class="payment-items" id="paymentItems">
-                <!-- Dynamically populated -->
-            </div>
-            <div class="payment-total">
-                <span class="payment-total-label">Total</span>
-                <span class="payment-total-amount" id="paymentTotalAmount">$0.00</span>
-            </div>
-            <div class="payment-actions">
-                <button class="btn-print" onclick="confirmPayment()">Confirm &amp; Print</button>
-                <button class="btn-cancel" onclick="closePaymentModal()">Cancel</button>
+    <!-- BILLING / CHECKOUT PANEL -->
+    <section id="billing" class="panel billing-panel">
+        <div class="brand-watermark">
+            <img class="watermark-logo" src="image copy.png" alt="">
+            <span class="watermark-text">DOT DEED</span>
+        </div>
+        <div class="billing-header">
+            <button class="back-button" onclick="navigateToPanel('#studio');">&larr; Back to Studio</button>
+            <div class="billing-title-group">
+                <span class="billing-brand">DOT DEED</span>
+                <h1 class="billing-title">Checkout</h1>
             </div>
         </div>
-    </div>
+
+        <div class="billing-layout">
+            <!-- LEFT: Shipping Address -->
+            <div class="billing-left">
+                <div class="billing-section-card">
+                    <h2 class="billing-section-title">Shipping Address</h2>
+                    <p class="billing-section-sub">Your certificate will be printed and shipped to this address.</p>
+
+                    <div class="billing-field">
+                        <label for="billingFullName">Full Name</label>
+                        <input type="text" id="billingFullName" class="billing-input" placeholder="John Doe">
+                    </div>
+                    <div class="billing-field">
+                        <label for="billingAddress">Street Address</label>
+                        <input type="text" id="billingAddress" class="billing-input" placeholder="123 Main Street">
+                    </div>
+                    <div class="billing-row">
+                        <div class="billing-field">
+                            <label for="billingCity">City</label>
+                            <input type="text" id="billingCity" class="billing-input" placeholder="City">
+                        </div>
+                        <div class="billing-field">
+                            <label for="billingState">State</label>
+                            <input type="text" id="billingState" class="billing-input" placeholder="State">
+                        </div>
+                    </div>
+                    <div class="billing-row">
+                        <div class="billing-field">
+                            <label for="billingZip">ZIP / Postal Code</label>
+                            <input type="text" id="billingZip" class="billing-input" placeholder="12345">
+                        </div>
+                        <div class="billing-field">
+                            <label for="billingCountry">Country</label>
+                            <select id="billingCountry" class="billing-input">
+                                <option value="">Select country...</option>
+                                <option value="US">United States</option>
+                                <option value="CA">Canada</option>
+                                <option value="GB">United Kingdom</option>
+                                <option value="AU">Australia</option>
+                                <option value="DE">Germany</option>
+                                <option value="FR">France</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Order Summary -->
+            <div class="billing-right">
+                <div class="billing-section-card">
+                    <h2 class="billing-section-title">Order Summary</h2>
+                    <div id="billingOrderItems" class="billing-items">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="billing-totals">
+                        <div class="billing-total-row">
+                            <span>Subtotal</span>
+                            <span id="billingSubtotal">$0.00</span>
+                        </div>
+                        <div class="billing-total-row">
+                            <span>Shipping</span>
+                            <span id="billingShipping">—</span>
+                        </div>
+                        <div class="billing-total-row billing-total-row-final">
+                            <span>Total</span>
+                            <span id="billingTotal">$0.00</span>
+                        </div>
+                    </div>
+                    <button class="billing-place-order" onclick="placeOrder()">Place Order</button>
+                    <p class="billing-secure-note">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Secure checkout &middot; Your certificate will be printed and shipped to you
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <script src="studio.js"></script>
 </body>

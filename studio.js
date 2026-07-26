@@ -114,12 +114,16 @@ async function logoutUser() {
 function updateAuthUI() {
     const authBtn = document.getElementById('authBtn');
     const badge = document.getElementById('userRegistryBadge');
-    if (currentUser) {
+    if (currentUser && !currentUser.isGuest) {
         authBtn.textContent = 'Sign Out';
         authBtn.onclick = logoutUser;
         badge.style.display = 'flex';
         badge.querySelector('.registry-badge-id').textContent = currentUser.registryId;
         badge.title = `Logged in as ${currentUser.username} \u2022 Registry ID: ${currentUser.registryId}`;
+    } else if (currentUser && currentUser.isGuest) {
+        authBtn.textContent = 'Sign Out';
+        authBtn.onclick = logoutUser;
+        badge.style.display = 'none';
     } else {
         authBtn.textContent = 'Sign In';
         authBtn.onclick = openAuthModal;
@@ -1157,7 +1161,7 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// ===== EXPORT, PRINT & PAYMENT FUNCTIONS =====
+// ===== BILLING & CHECKOUT =====
 function printCertificate() {
     // Validate inputs
     if (!document.getElementById('recipientName').value) {
@@ -1169,11 +1173,15 @@ function printCertificate() {
         return;
     }
     
-    // Show payment summary instead of printing directly
-    showPaymentSummary();
+    // Populate billing page
+    populateBilling();
+    
+    // Navigate to billing panel
+    navigateToPanel('#billing');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
 }
 
-function showPaymentSummary() {
+function populateBilling() {
     const type = currentCertificate.type;
     const certPrice = CERT_PRICES[type] || 15;
     const domainPrice = currentCertificate.domainPrice || 0;
@@ -1181,64 +1189,99 @@ function showPaymentSummary() {
     const hasBizCard = document.getElementById('businessCardOption')?.checked || false;
     
     let itemsHtml = '';
-    let total = 0;
+    let subtotal = 0;
     
     // Certificate item
     const typeLabel = type === 'Elite' ? 'Elite (all add-ons included)' : type === 'Premium' ? 'Premium (alterations included)' : type;
     itemsHtml += `
-        <div class="payment-item">
-            <div class="payment-item-label">
-                <span class="payment-item-name">${typeLabel} Certificate</span>
-                <span class="payment-item-desc">Digital domain ownership certificate</span>
+        <div class="billing-item">
+            <div class="billing-item-left">
+                <div class="billing-item-name">${typeLabel} Certificate</div>
+                <div class="billing-item-desc">Digital domain ownership certificate</div>
             </div>
-            <span class="payment-item-price">$${certPrice.toFixed(2)}</span>
+            <div class="billing-item-price">$${certPrice.toFixed(2)}</div>
         </div>`;
-    total += certPrice;
+    subtotal += certPrice;
     
-    // Domain item (if purchased)
+    // Domain
     if (domainPrice > 0) {
         itemsHtml += `
-            <div class="payment-item">
-                <div class="payment-item-label">
-                    <span class="payment-item-name">Domain: ${escapeHtml(currentCertificate.domainName)}</span>
-                    <span class="payment-item-desc">Premium domain registration</span>
+            <div class="billing-item">
+                <div class="billing-item-left">
+                    <div class="billing-item-name">Domain: ${escapeHtml(currentCertificate.domainName)}</div>
+                    <div class="billing-item-desc">Premium domain registration</div>
                 </div>
-                <span class="payment-item-price">$${domainPrice.toFixed(2)}</span>
+                <div class="billing-item-price">$${domainPrice.toFixed(2)}</div>
             </div>`;
-        total += domainPrice;
+        subtotal += domainPrice;
     }
     
-    // Frame add-on (tier-based pricing)
+    // Frame
     if (hasFrame) {
         const framePrice = type === 'Elite' ? 0 : 12;
         itemsHtml += `
-            <div class="payment-item">
-                <div class="payment-item-label">
-                    <span class="payment-item-name">Display Frame</span>
-                    <span class="payment-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Premium wood finish frame'}</span>
+            <div class="billing-item">
+                <div class="billing-item-left">
+                    <div class="billing-item-name">Display Frame</div>
+                    <div class="billing-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Premium wood finish'}</div>
                 </div>
-                <span class="payment-item-price">${type === 'Elite' ? 'FREE' : '$12.00'}</span>
+                <div class="billing-item-price">${type === 'Elite' ? 'FREE' : '$12.00'}</div>
             </div>`;
-        total += framePrice;
+        subtotal += framePrice;
     }
     
-    // Business card add-on (tier-based pricing)
+    // Business card
     if (hasBizCard) {
         const bizCardPrice = type === 'Elite' ? 0 : 8;
         itemsHtml += `
-            <div class="payment-item">
-                <div class="payment-item-label">
-                    <span class="payment-item-name">Business Card</span>
-                    <span class="payment-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Matching business card layout'}</span>
+            <div class="billing-item">
+                <div class="billing-item-left">
+                    <div class="billing-item-name">Business Card</div>
+                    <div class="billing-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Matching business card layout'}</div>
                 </div>
-                <span class="payment-item-price">${type === 'Elite' ? 'FREE' : '$8.00'}</span>
+                <div class="billing-item-price">${type === 'Elite' ? 'FREE' : '$8.00'}</div>
             </div>`;
-        total += bizCardPrice;
+        subtotal += bizCardPrice;
     }
     
-    document.getElementById('paymentItems').innerHTML = itemsHtml;
-    document.getElementById('paymentTotalAmount').textContent = `$${total.toFixed(2)}`;
-    document.getElementById('paymentModalOverlay').classList.remove('hidden');
+    // Shipping estimate based on subtotal
+    const shipping = subtotal >= 50 ? 0 : subtotal > 0 ? 9.99 : 0;
+    const shippingLabel = subtotal >= 50 ? 'FREE' : '$9.99';
+    const total = subtotal + (subtotal >= 50 ? 0 : shipping);
+    
+    document.getElementById('billingOrderItems').innerHTML = itemsHtml;
+    document.getElementById('billingSubtotal').textContent = `$${subtotal.toFixed(2)}`;
+    document.getElementById('billingShipping').textContent = shippingLabel;
+    document.getElementById('billingTotal').textContent = `$${total.toFixed(2)}`;
+    
+    // Pre-fill name from certificate
+    const recipientName = document.getElementById('recipientName').value || '';
+    if (document.getElementById('billingFullName')) {
+        document.getElementById('billingFullName').value = recipientName;
+    }
+}
+
+function placeOrder() {
+    // Validate address
+    const name = document.getElementById('billingFullName')?.value.trim();
+    const address = document.getElementById('billingAddress')?.value.trim();
+    const city = document.getElementById('billingCity')?.value.trim();
+    const state = document.getElementById('billingState')?.value.trim();
+    const zip = document.getElementById('billingZip')?.value.trim();
+    const country = document.getElementById('billingCountry')?.value;
+    
+    if (!name || !address || !city || !state || !zip || !country) {
+        alert('Please fill in all shipping address fields.');
+        return;
+    }
+    
+    // Show confirmation
+    const orderTotal = document.getElementById('billingTotal').textContent;
+    alert(`Order placed!\n\nYour ${currentCertificate.type} certificate will be shipped to:\n${name}\n${address}\n${city}, ${state} ${zip}\n${country}\n\nTotal charged: ${orderTotal}\n\nThank you for your order!`);
+    
+    // Navigate back to home
+    navigateToPanel('#storefront');
+    updateNavActive('#storefront');
 }
 
 function closePaymentModal() {
