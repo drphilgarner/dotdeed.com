@@ -862,20 +862,11 @@ function updatePreview() {
     if (innerContainer) {
         if (hasFrame) {
             innerContainer.innerHTML = `
-                <div class="frame-container" style="display:flex !important">
-                    <div class="frame-assembly">
-                        <div class="frame-hanger"></div>
-                        <div class="frame-outer">
-                            <div class="frame-wood" data-wood="${frameWoodType}" style="padding: 36px;">
-                                <div class="frame-corner frame-corner-tl"></div>
-                                <div class="frame-corner frame-corner-tr"></div>
-                                <div class="frame-corner frame-corner-bl"></div>
-                                <div class="frame-corner frame-corner-br"></div>
-                                <div class="frame-mat">
-                                    <div class="frame-cert">
-                                        ${certHTML}
-                                    </div>
-                                </div>
+                <div class="frame-outer">
+                    <div class="frame-wood" data-wood="${frameWoodType}">
+                        <div class="mat-board">
+                            <div class="certificate-in-frame">
+                                ${certHTML}
                             </div>
                         </div>
                     </div>

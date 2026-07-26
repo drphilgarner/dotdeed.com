@@ -3437,303 +3437,170 @@ body {
 }
 
 /* ===== REALISTIC PICTURE FRAME ===== */
-.frame-container {
-    display: none !important;
-    position: relative;
-    padding: 0;
-    margin: 0;
-    line-height: 0;
-}
-
-/* The frame assembly */
-.frame-assembly {
-    position: relative;
-    display: inline-block;
-    line-height: 0;
-}
-
-/* Frame outer border */
 .frame-outer {
-    position: relative;
-    display: inline-block;
-    padding: 0;
-    background: transparent;
-    line-height: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    background-color: #f4f3ef;
 }
 
-/* Frame wood rails with realistic wood grain texture */
 .frame-wood {
-    position: relative;
-    display: inline-block;
-    box-shadow:
-        inset 0 2px 3px rgba(255,255,255,0.1),
-        inset 1px 0 3px rgba(255,255,255,0.05),
-        inset -2px -2px 4px rgba(0,0,0,0.15),
-        inset -1px 0 3px rgba(0,0,0,0.08),
-        0 10px 40px rgba(0,0,0,0.35),
-        0 4px 14px rgba(0,0,0,0.25);
-    border-radius: 2px;
-    line-height: 0;
-}
-
-/* Wood grain texture layers by type */
-.frame-wood[data-wood="walnut"] {
-    background:
-        repeating-linear-gradient(
-            92deg,
-            transparent 0px, transparent 3px,
-            rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px,
-            transparent 4px, transparent 8px
-        ),
-        repeating-linear-gradient(
-            88deg,
-            transparent 0px, transparent 5px,
-            rgba(0,0,0,0.04) 5px, rgba(0,0,0,0.04) 6px,
-            transparent 6px, transparent 12px
-        ),
-        linear-gradient(135deg, #5b3b2c, #4a2e20, #6d4a38, #3d2518, #5b3b2c);
+    background: linear-gradient(135deg, #4a2c11 0%, #2b1808 50%, #3d210b 100%);
+    padding: 24px;
+    border-radius: 4px;
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        inset 0 2px 4px rgba(255, 255, 255, 0.15),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .frame-wood[data-wood="oak"] {
-    background:
-        repeating-linear-gradient(
-            85deg,
-            transparent 0px, transparent 6px,
-            rgba(0,0,0,0.05) 6px, rgba(0,0,0,0.05) 7px,
-            transparent 7px, transparent 14px
-        ),
-        repeating-linear-gradient(
-            95deg,
-            transparent 0px, transparent 4px,
-            rgba(0,0,0,0.03) 4px, rgba(0,0,0,0.03) 5px,
-            transparent 5px, transparent 10px
-        ),
-        linear-gradient(135deg, #8e6a3d, #a07848, #7a5a32, #8e6a3d, #b89058);
+    background: linear-gradient(135deg, #8e6a3d, #a07848, #7a5a32, #8e6a3d, #b89058);
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        inset 0 2px 4px rgba(255, 255, 255, 0.2),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .frame-wood[data-wood="mahogany"] {
-    background:
-        repeating-linear-gradient(
-            90deg,
-            transparent 0px, transparent 4px,
-            rgba(0,0,0,0.07) 4px, rgba(0,0,0,0.07) 5px,
-            transparent 5px, transparent 9px
-        ),
-        repeating-linear-gradient(
-            87deg,
-            transparent 0px, transparent 7px,
-            rgba(60,0,0,0.05) 7px, rgba(60,0,0,0.05) 8px,
-            transparent 8px, transparent 15px
-        ),
-        linear-gradient(135deg, #6a2d2d, #5a2020, #7d3535, #4a1a1a, #6a2d2d);
+    background: linear-gradient(135deg, #6a2d2d, #5a2020, #7d3535, #4a1a1a, #6a2d2d);
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        inset 0 2px 4px rgba(255, 180, 180, 0.1),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .frame-wood[data-wood="ebony"] {
-    background:
-        repeating-linear-gradient(
-            93deg,
-            transparent 0px, transparent 5px,
-            rgba(255,255,255,0.04) 5px, rgba(255,255,255,0.04) 6px,
-            transparent 6px, transparent 11px
-        ),
-        repeating-linear-gradient(
-            86deg,
-            transparent 0px, transparent 8px,
-            rgba(40,30,20,0.06) 8px, rgba(40,30,20,0.06) 9px,
-            transparent 9px, transparent 16px
-        ),
-        linear-gradient(135deg, #1f1a17, #2a221e, #15110e, #1f1a17, #2c2420);
+    background: linear-gradient(135deg, #1f1a17, #2a221e, #15110e, #1f1a17, #2c2420);
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.5),
+        inset 0 2px 4px rgba(255, 255, 255, 0.08),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.7);
 }
 
-/* Mat (the white border between frame and certificate) */
-.frame-mat {
-    display: inline-block;
-    padding: 22px;
-    background: #ffffff;
-    line-height: 0;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06), inset 0 0 3px rgba(0,0,0,0.03);
+.mat-board {
+    background-color: #fcfbfa;
+    padding: 30px;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.35);
+    border: 1px solid #e2ded4;
 }
 
-/* The certificate inside the frame — smaller */
-.frame-cert {
-    display: inline-block;
-    line-height: 0;
-    overflow: hidden;
-    border-radius: 1px;
+.certificate-in-frame {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0;
+    border: 2px solid #732328;
+    outline: 1px solid #732328;
+    outline-offset: -6px;
+    background-color: #ffffff;
 }
 
-.frame-cert .certificate-wrapper {
-    width: 400px;
-    height: auto;
-    padding: 20px 28px;
+.certificate-in-frame .certificate-wrapper {
+    width: auto;
+    padding: 24px 28px;
 }
 
-.frame-cert .certificate-wrapper::before {
+.certificate-in-frame .certificate-wrapper::before {
     inset: 4px;
 }
 
-.frame-cert .certificate-wrapper::after {
+.certificate-in-frame .certificate-wrapper::after {
     inset: 8px;
 }
 
-.frame-cert .cert-institution {
-    font-size: 1.4rem;
+.certificate-in-frame .cert-institution {
+    font-size: 1.6rem;
     letter-spacing: 4px;
 }
 
-.frame-cert .cert-recipient {
-    font-size: 1.2rem;
-    padding: 0.2rem 0.8rem;
+.certificate-in-frame .cert-recipient {
+    font-size: 1.3rem;
+    padding: 0.3rem 0.8rem;
 }
 
-.frame-cert .seal-svg {
-    width: 44px;
-    height: 44px;
+.certificate-in-frame .seal-svg {
+    width: 48px;
+    height: 48px;
 }
 
-.frame-cert .cert-degree {
-    font-size: 0.7rem;
-    letter-spacing: 1.5px;
+.certificate-in-frame .cert-degree {
+    font-size: 0.75rem;
+    letter-spacing: 2px;
     padding: 0.2rem 0;
 }
 
-.frame-cert .cert-motto {
-    font-size: 0.5rem;
+.certificate-in-frame .cert-motto {
+    font-size: 0.55rem;
     letter-spacing: 2px;
 }
 
-.frame-cert .cert-preface {
-    font-size: 0.55rem;
+.certificate-in-frame .cert-preface {
+    font-size: 0.6rem;
 }
 
-.frame-cert .cert-domain {
-    font-size: 0.6rem;
+.certificate-in-frame .cert-domain {
+    font-size: 0.65rem;
     padding: 3px 10px;
 }
 
-.frame-cert .cert-footer {
-    gap: 1rem;
+.certificate-in-frame .cert-footer {
+    gap: 1.2rem;
     margin-top: 0.3rem;
 }
 
-.frame-cert .signature-label {
-    font-size: 0.5rem;
-}
-
-.frame-cert .signature-title {
-    font-size: 0.42rem;
-}
-
-.frame-cert .cert-date {
-    font-size: 0.48rem;
-}
-
-.frame-cert .cert-id {
-    font-size: 0.42rem;
-}
-
-.frame-cert .corner {
-    width: 14px;
-    height: 14px;
-}
-
-.frame-cert .corner-tl { top: 8px; left: 8px; }
-.frame-cert .corner-tr { top: 8px; right: 8px; }
-.frame-cert .corner-bl { bottom: 8px; left: 8px; }
-.frame-cert .corner-br { bottom: 8px; right: 8px; }
-
-.frame-cert .cert-divider {
-    width: 60%;
-    margin: 0.15rem auto;
-}
-
-.frame-cert .signature-block {
-    width: 72px;
-}
-
-.frame-cert .divider-ornament {
-    font-size: 0.7rem;
-}
-
-.frame-cert .cert-notes {
+.certificate-in-frame .signature-label {
     font-size: 0.55rem;
 }
 
-.frame-cert .cert-body {
+.certificate-in-frame .signature-title {
+    font-size: 0.45rem;
+}
+
+.certificate-in-frame .cert-date {
+    font-size: 0.5rem;
+}
+
+.certificate-in-frame .cert-id {
+    font-size: 0.45rem;
+}
+
+.certificate-in-frame .cert-divider {
+    width: 65%;
+    margin: 0.2rem auto;
+}
+
+.certificate-in-frame .signature-block {
+    width: 80px;
+}
+
+.certificate-in-frame .divider-ornament {
+    font-size: 0.75rem;
+}
+
+.certificate-in-frame .cert-body {
     gap: 0.2rem;
 }
 
-.frame-cert .cert-seal-large {
+.certificate-in-frame .cert-seal-large {
     margin: 0.3rem 0 0.2rem;
 }
 
-.frame-cert .cert-department {
+.certificate-in-frame .cert-department {
     font-size: 0.55rem;
     letter-spacing: 2px;
 }
 
-.frame-cert .cert-domain-label {
+.certificate-in-frame .cert-domain-label {
     font-size: 0.55rem;
 }
 
-.frame-cert .cert-top {
+.certificate-in-frame .cert-top {
     margin-bottom: 0;
 }
 
-.frame-cert .cert-bottom {
+.certificate-in-frame .cert-bottom {
     margin-top: 0.15rem;
-}
-
-/* Frame corner accents */
-.frame-corner {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255,255,255,0.15);
-    z-index: 5;
-    pointer-events: none;
-}
-.frame-corner-tl { top: 2px; left: 2px; border-right: none; border-bottom: none; border-radius: 2px 0 0 0; }
-.frame-corner-tr { top: 2px; right: 2px; border-left: none; border-bottom: none; border-radius: 0 2px 0 0; }
-.frame-corner-bl { bottom: 2px; left: 2px; border-right: none; border-top: none; border-radius: 0 0 0 2px; }
-.frame-corner-br { bottom: 2px; right: 2px; border-left: none; border-top: none; border-radius: 0 0 2px 0; }
-
-/* Hanging wire */
-.frame-hanger {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 1.5px;
-    height: 10px;
-    background: #999;
-    border-radius: 1px 1px 0 0;
-    z-index: 3;
-}
-
-.frame-hanger::before {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    border: 2px solid #999;
-    background: transparent;
-}
-
-.frame-hanger::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 12px;
-    height: 2.5px;
-    background: #777;
-    border-radius: 2px;
 }
 
 /* Preview container split */
@@ -4682,13 +4549,39 @@ body {
         padding: 14px !important;
     }
 
-    .frame-mat {
-        padding: 10px;
+    .mat-board {
+        padding: 14px;
     }
 
-    .frame-cert .certificate-wrapper {
-        width: 260px;
+    .certificate-in-frame .certificate-wrapper {
+        width: auto;
         padding: 12px 14px;
+    }
+
+    .certificate-in-frame .cert-institution {
+        font-size: 1rem;
+        letter-spacing: 2px;
+    }
+
+    .certificate-in-frame .cert-recipient {
+        font-size: 0.9rem;
+    }
+
+    .certificate-in-frame .seal-svg {
+        width: 30px;
+        height: 30px;
+    }
+
+    .certificate-in-frame .cert-motto {
+        font-size: 0.4rem;
+    }
+
+    .certificate-in-frame .cert-preface {
+        font-size: 0.45rem;
+    }
+
+    .certificate-in-frame .cert-degree {
+        font-size: 0.55rem;
     }
 
     .cert-title {
