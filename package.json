@@ -16,6 +16,7 @@
     "better-sqlite3": "^12.11.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
-    "google-auth-library": "^10.9.1"
+    "google-auth-library": "^10.9.1",
+    "stripe": "^22.3.2"
   }
 }

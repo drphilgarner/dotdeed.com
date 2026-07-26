@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="image copy.png">
     <link rel="stylesheet" href="styles-new.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <!-- HEADER & NAVIGATION -->
@@ -1155,7 +1156,14 @@
                                 <span id="billingTotal">$0.00</span>
                             </div>
                         </div>
-                        <button class="billing-place-order" onclick="placeOrder()">Place Order</button>
+                        <div class="billing-card-section">
+                            <label class="billing-card-label">Card Payment</label>
+                            <div id="stripeCardElement" class="billing-card-element">
+                                <!-- Stripe Elements mounts here -->
+                            </div>
+                            <div id="stripeCardError" class="billing-card-error hidden"></div>
+                        </div>
+                        <button class="billing-place-order" id="placeOrderBtn" onclick="placeOrder()">Place Order</button>
                         <p class="billing-secure-note">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             Secure checkout &middot; Your certificate will be printed and shipped to you

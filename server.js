@@ -4,6 +4,7 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const { OAuth2Client } = require('google-auth-library');
+const Stripe = require('stripe');
 
 // ===== SETUP =====
 const app = express();
@@ -12,6 +13,7 @@ const db = new Database('dotdeed.db');
 
 const GOOGLE_CLIENT_ID = '225372944068-dinr71d04igfu2733q3f4a4bb8b25cg2.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+const stripe = Stripe('sk_test_51Txa9ZRDgGi4zkad3zoe7sU9ZsMvgy4XkzqSEL4E1yiGy6czbZAxcfl1c2YaJwfGdIW7iQneZVbzAXS34ByoLsh800iMcxliz5');
 
 // Middleware
 app.use(express.json());
@@ -222,6 +224,35 @@ app.post('/api/google-signin', async (req, res) => {
     } catch (err) {
         console.error('Google sign-in error:', err);
         res.status(500).json({ error: 'Google sign-in failed' });
+    }
+});
+
+// Stripe Payment Intent
+app.post('/api/create-payment-intent', async (req, res) => {
+    try {
+        const { amount, items, shipping } = req.body;
+        
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ error: 'Invalid amount' });
+        }
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Stripe uses cents
+            currency: 'usd',
+            automatic_payment_methods: {
+                enabled: true,
+            },
+            metadata: {
+                items: JSON.stringify(items || []),
+                shipping: JSON.stringify(shipping || {}),
+            },
+        });
+
+        res.json({ clientSecret: paymentIntent.client_secret });
+
+    } catch (err) {
+        console.error('Payment intent error:', err);
+        res.status(500).json({ error: 'Failed to create payment' });
     }
 });
 

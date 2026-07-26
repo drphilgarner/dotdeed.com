@@ -1221,6 +1221,11 @@ function escapeHtml(text) {
 }
 
 // ===== BILLING & CHECKOUT =====
+const stripePublishableKey = 'pk_test_51Txa9ZRDgGi4zkadjEz5sK5vNTU3JNgslCFkygmKMGjTQKa080Tkkf11baDdaVbzEMyTnw6uGJ7kTk8aoH8b2jrD00tUNsVND8';
+let stripe = null;
+let stripeElements = null;
+let stripeCard = null;
+
 function printCertificate() {
     // Validate inputs
     if (!document.getElementById('recipientName').value) {
@@ -1238,6 +1243,39 @@ function printCertificate() {
     // Navigate to billing panel
     navigateToPanel('#billing');
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    
+    // Initialize Stripe
+    setTimeout(initStripe, 300);
+}
+
+function initStripe() {
+    if (stripe) return; // Already initialized
+    if (typeof Stripe === 'undefined') return;
+    
+    stripe = Stripe(stripePublishableKey);
+    stripeElements = stripe.elements();
+    stripeCard = stripeElements.create('card', {
+        style: {
+            base: {
+                fontSize: '15px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                color: '#e8e8e8',
+                '::placeholder': { color: '#6b6b7a' },
+                backgroundColor: 'transparent',
+            },
+        },
+    });
+    stripeCard.mount('#stripeCardElement');
+    
+    stripeCard.on('change', (event) => {
+        const errorEl = document.getElementById('stripeCardError');
+        if (event.error) {
+            errorEl.textContent = event.error.message;
+            errorEl.classList.remove('hidden');
+        } else {
+            errorEl.classList.add('hidden');
+        }
+    });
 }
 
 function populateBilling() {
@@ -1250,7 +1288,6 @@ function populateBilling() {
     let itemsHtml = '';
     let subtotal = 0;
     
-    // Certificate item
     const typeLabel = type === 'Elite' ? 'Elite (all add-ons included)' : type === 'Premium' ? 'Premium (alterations included)' : type;
     itemsHtml += `
         <div class="billing-item">
@@ -1262,7 +1299,6 @@ function populateBilling() {
         </div>`;
     subtotal += certPrice;
     
-    // Domain
     if (domainPrice > 0) {
         itemsHtml += `
             <div class="billing-item">
@@ -1275,7 +1311,6 @@ function populateBilling() {
         subtotal += domainPrice;
     }
     
-    // Frame
     if (hasFrame) {
         const framePrice = type === 'Elite' ? 0 : 12;
         itemsHtml += `
@@ -1289,7 +1324,6 @@ function populateBilling() {
         subtotal += framePrice;
     }
     
-    // Business card
     if (hasBizCard) {
         const bizCardPrice = type === 'Elite' ? 0 : 8;
         itemsHtml += `
@@ -1303,7 +1337,6 @@ function populateBilling() {
         subtotal += bizCardPrice;
     }
     
-    // Shipping estimate based on subtotal
     const shipping = subtotal >= 50 ? 0 : subtotal > 0 ? 9.99 : 0;
     const shippingLabel = subtotal >= 50 ? 'FREE' : '$9.99';
     const total = subtotal + (subtotal >= 50 ? 0 : shipping);
@@ -1313,15 +1346,13 @@ function populateBilling() {
     document.getElementById('billingShipping').textContent = shippingLabel;
     document.getElementById('billingTotal').textContent = `$${total.toFixed(2)}`;
     
-    // Pre-fill name from certificate
     const recipientName = document.getElementById('recipientName').value || '';
     if (document.getElementById('billingFullName')) {
         document.getElementById('billingFullName').value = recipientName;
     }
 }
 
-function placeOrder() {
-    // Validate address
+async function placeOrder() {
     const name = document.getElementById('billingFullName')?.value.trim();
     const address = document.getElementById('billingAddress')?.value.trim();
     const city = document.getElementById('billingCity')?.value.trim();
@@ -1334,13 +1365,79 @@ function placeOrder() {
         return;
     }
     
-    // Show confirmation
-    const orderTotal = document.getElementById('billingTotal').textContent;
-    alert(`Order placed!\n\nYour ${currentCertificate.type} certificate will be shipped to:\n${name}\n${address}\n${city}, ${state} ${zip}\n${country}\n\nTotal charged: ${orderTotal}\n\nThank you for your order!`);
+    if (!stripe || !stripeCard) {
+        alert('Payment system not loaded. Please try again.');
+        return;
+    }
     
-    // Navigate back to home
-    navigateToPanel('#storefront');
-    updateNavActive('#storefront');
+    // Disable button
+    const btn = document.getElementById('placeOrderBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
+    try {
+        const totalText = document.getElementById('billingTotal').textContent;
+        const amount = parseFloat(totalText.replace('$', ''));
+        const items = [
+            { name: `${currentCertificate.type} Certificate`, price: CERT_PRICES[currentCertificate.type] || 15 },
+        ];
+        if (currentCertificate.domainPrice > 0) {
+            items.push({ name: `Domain: ${currentCertificate.domainName}`, price: currentCertificate.domainPrice });
+        }
+        
+        // Create payment intent on server
+        const result = await api('/api/create-payment-intent', {
+            amount,
+            items,
+            shipping: { name, address, city, state, zip, country },
+        });
+        
+        if (result.error) {
+            alert('Payment error: ' + result.error);
+            btn.disabled = false;
+            btn.textContent = 'Place Order';
+            return;
+        }
+        
+        // Confirm the card payment
+        const { error, paymentIntent } = await stripe.confirmCardPayment(result.clientSecret, {
+            payment_method: {
+                card: stripeCard,
+                billing_details: {
+                    name: name,
+                    address: {
+                        line1: address,
+                        city: city,
+                        state: state,
+                        postal_code: zip,
+                        country: country === 'US' ? 'US' : undefined,
+                    },
+                },
+            },
+        });
+        
+        if (error) {
+            document.getElementById('stripeCardError').textContent = error.message;
+            document.getElementById('stripeCardError').classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Place Order';
+            return;
+        }
+        
+        if (paymentIntent.status === 'succeeded') {
+            alert(`Payment successful!\n\nYour ${currentCertificate.type} certificate will be shipped to:\n${name}\n${address}\n${city}, ${state} ${zip}\n${country}\n\nOrder total: ${totalText}\n\nThank you for your order!`);
+            
+            // Reset
+            stripeCard.clear();
+            navigateToPanel('#storefront');
+            updateNavActive('#storefront');
+        }
+        
+    } catch (err) {
+        alert('Payment failed. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Place Order';
+    }
 }
 
 function closePaymentModal() {
