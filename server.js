@@ -3,11 +3,15 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+const { OAuth2Client } = require('google-auth-library');
 
 // ===== SETUP =====
 const app = express();
 const PORT = 5000;
 const db = new Database('dotdeed.db');
+
+const GOOGLE_CLIENT_ID = '225372944068-dinr71d04igfu2733q3f4a4bb8b25cg2.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Middleware
 app.use(express.json());
@@ -40,6 +44,8 @@ db.exec(`
 
 // Add email column if upgrading existing DB
 try { db.exec("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''"); } catch(e) {}
+// Add google_id column if upgrading existing DB
+try { db.exec("ALTER TABLE users ADD COLUMN google_id TEXT"); } catch(e) {}
 
 // Helper: generate a unique Registry ID
 function generateRegistryId() {
@@ -166,6 +172,56 @@ app.post('/api/guest', (req, res) => {
     } catch (err) {
         console.error('Guest login error:', err);
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Google Sign-In
+app.post('/api/google-signin', async (req, res) => {
+    try {
+        const { credential } = req.body;
+        if (!credential) return res.status(400).json({ error: 'Missing credential' });
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        const googleId = payload.sub;
+        const email = payload.email;
+        const name = payload.name || email.split('@')[0];
+
+        // Check if user exists by google_id or email
+        let user = db.prepare('SELECT * FROM users WHERE google_id = ?').get(googleId);
+        
+        if (!user) {
+            // Check by email
+            user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+            if (user) {
+                // Link Google ID to existing account
+                db.prepare('UPDATE users SET google_id = ? WHERE id = ?').run(googleId, user.id);
+            } else {
+                // Create new account
+                const passwordHash = bcrypt.hashSync(googleId + Date.now(), 10);
+                const registryId = generateRegistryId();
+                const result = db.prepare(
+                    'INSERT INTO users (username, email, password_hash, registry_id, google_id) VALUES (?, ?, ?, ?, ?)'
+                ).run(name, email, passwordHash, registryId, googleId);
+                user = { id: result.lastInsertRowid, username: name, email, registry_id: registryId };
+                // Add google_id column if missing
+                try { db.exec("ALTER TABLE users ADD COLUMN google_id TEXT"); } catch(e) {}
+            }
+        }
+
+        req.session.userId = user.id;
+        req.session.username = user.username;
+        req.session.registryId = user.registry_id;
+
+        res.json({ username: user.username, registryId: user.registry_id });
+
+    } catch (err) {
+        console.error('Google sign-in error:', err);
+        res.status(500).json({ error: 'Google sign-in failed' });
     }
 });
 

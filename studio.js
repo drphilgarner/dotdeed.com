@@ -27,6 +27,8 @@ function openAuthModal() {
     document.getElementById('signinError').classList.add('hidden');
     document.getElementById('signupError').classList.add('hidden');
     switchAuthTab('signin');
+    // Initialize Google sign-in button
+    setTimeout(initGoogleSignIn, 300);
 }
 
 function closeAuthModal() {
@@ -59,6 +61,13 @@ async function handleSignUp(e) {
     updateAuthUI();
     updateRegistryIdField();
     closeAuthModal();
+    // Pre-fill recipient name in studio if on that panel
+    const nameField = document.getElementById('recipientName');
+    const studioPanel = document.getElementById('studio');
+    if (nameField && studioPanel?.classList.contains('active') && !nameField.value) {
+        nameField.value = result.username;
+        if (typeof updatePreview === 'function') updatePreview();
+    }
     showNotification(`Account created! Your Registry ID: ${result.registryId}`);
 }
 
@@ -77,6 +86,13 @@ async function handleSignIn(e) {
     updateAuthUI();
     updateRegistryIdField();
     closeAuthModal();
+    // Pre-fill recipient name in studio if on that panel
+    const nameField = document.getElementById('recipientName');
+    const studioPanel = document.getElementById('studio');
+    if (nameField && studioPanel?.classList.contains('active') && !nameField.value) {
+        nameField.value = result.username;
+        if (typeof updatePreview === 'function') updatePreview();
+    }
     showNotification(`Welcome back, ${result.username}!`);
 }
 
@@ -96,6 +112,58 @@ async function handleGuestLogin() {
     } catch (err) {
         showAuthError(errorEl, 'Server unavailable. Make sure the server is running.');
     }
+}
+
+async function handleGoogleSignIn(response) {
+    const errorEl = document.getElementById('signinError');
+    errorEl.classList.add('hidden');
+
+    try {
+        const result = await api('/api/google-signin', { credential: response.credential });
+        if (result.error) { showAuthError(errorEl, result.error); return; }
+
+        currentUser = { username: result.username, registryId: result.registryId };
+        updateAuthUI();
+        updateRegistryIdField();
+        closeAuthModal();
+        
+        // Decode Google profile to pre-fill name
+        try {
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            const googleName = payload.name || payload.given_name || '';
+            const nameField = document.getElementById('recipientName');
+            const studioPanel = document.getElementById('studio');
+            if (googleName && nameField && studioPanel?.classList.contains('active')) {
+                nameField.value = googleName;
+                if (typeof updatePreview === 'function') updatePreview();
+            }
+        } catch (e) {
+            // Silently fail - name prefill is a nice-to-have
+        }
+        
+        showNotification(`Welcome, ${result.username}!`);
+    } catch (err) {
+        showAuthError(errorEl, 'Google sign-in failed. Please try again.');
+    }
+}
+
+// Initialize Google Sign-In button when auth modal opens
+function initGoogleSignIn() {
+    const div = document.getElementById('googleSignInDiv');
+    if (!div || typeof google === 'undefined' || !google.accounts) return;
+    
+    div.innerHTML = '';
+    google.accounts.id.initialize({
+        client_id: '225372944068-dinr71d04igfu2733q3f4a4bb8b25cg2.apps.googleusercontent.com',
+        callback: handleGoogleSignIn
+    });
+    google.accounts.id.renderButton(div, {
+        theme: 'outline',
+        size: 'large',
+        width: div.parentElement?.offsetWidth || 320,
+        text: 'signin_with',
+        shape: 'rect'
+    });
 }
 
 function showAuthError(el, message) {

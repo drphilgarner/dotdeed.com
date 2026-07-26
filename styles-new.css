@@ -3857,6 +3857,33 @@ body {
     box-shadow: none !important;
 }
 
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-light);
+}
+
+.google-btn-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+.google-btn-wrapper iframe {
+    border-radius: 8px !important;
+}
+
 .auth-benefits {
     display: flex;
     flex-direction: column;
@@ -3881,6 +3908,12 @@ body {
     min-height: 100vh;
 }
 
+.billing-panel.active.active {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 [data-theme="light"] .billing-panel {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     color: #1d1d1f;
@@ -3890,6 +3923,8 @@ body {
     max-width: 1000px;
     margin: 0 auto;
     padding: 1.5rem 2rem 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .billing-header .back-button {
@@ -3952,11 +3987,13 @@ body {
 .billing-layout {
     max-width: 1000px;
     margin: 1.5rem auto;
-    padding: 0 2rem 3rem;
+    padding: 0 2rem 2rem;
     display: grid;
     grid-template-columns: 1fr 380px;
     gap: 2rem;
     align-items: start;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 @media (max-width: 800px) {
