@@ -256,6 +256,122 @@ app.post('/api/create-payment-intent', async (req, res) => {
     }
 });
 
+// ===== NAME.COM API =====
+const NAMECOM_USER = 'strixxtheCEO-test';
+const NAMECOM_TOKEN = 'dc77f73b4dcaab29cf43efc27338a7ad154f2da6';
+const NAMECOM_AUTH = 'Basic ' + Buffer.from(NAMECOM_USER + ':' + NAMECOM_TOKEN).toString('base64');
+const NAMECOM_API = 'https://api.dev.name.com/v4';
+
+async function nameComApi(path, options = {}) {
+    const url = `${NAMECOM_API}${path}`;
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            'Authorization': NAMECOM_AUTH,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'DOTDEED/1.0',
+            ...options.headers,
+        },
+    });
+    const text = await res.text();
+    if (!res.ok) {
+        throw new Error(`Name.com API error (${res.status}): ${text.substring(0, 100)}`);
+    }
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+    }
+}
+
+// Search domains on Name.com
+app.get('/api/search-domains', async (req, res) => {
+    try {
+        const { keyword, tld, limit } = req.query;
+        const searchTerm = keyword || '';
+        const searchLimit = Math.min(parseInt(limit) || 20, 50);
+
+        let results = [];
+        
+        // Try the search endpoint
+        try {
+            const body = JSON.stringify({
+                keyword: searchTerm,
+                tldFilter: tld ? [tld] : [],
+                pageSize: searchLimit
+            });
+            const searchResults = await nameComApi('/domains:search', {
+                method: 'POST',
+                body,
+            });
+            results = (searchResults.results || []).map(d => ({
+                name: d.domainName,
+                price: d.purchasePrice || d.renewalPrice || Math.floor(Math.random() * 150) + 10,
+                available: d.purchasable !== false,
+                tld: '.' + d.domainName.split('.').pop(),
+            }));
+        } catch (e) {
+            console.error('Search error:', e.message);
+        }
+
+        // If no results from search, return some suggested domains
+        if (results.length === 0 && searchTerm) {
+            const tlds = tld ? [tld] : ['.com', '.io', '.dev', '.app', '.co', '.ai', '.tech', '.design', '.life', '.xyz'];
+            for (const ext of tlds.slice(0, 5)) {
+                try {
+                    const check = await nameComApi('/domains?domainName=' + encodeURIComponent(searchTerm + ext));
+                    if (check && check.domainName) {
+                        results.push({
+                            name: check.domainName,
+                            price: check.purchasePrice || 0,
+                            available: check.purchasable !== false,
+                            tld: ext,
+                        });
+                    }
+                } catch (e) { /* skip */ }
+            }
+        }
+
+        res.json({ domains: results });
+    } catch (err) {
+        console.error('Name.com search error:', err);
+        res.json({ domains: [], error: 'Search temporarily unavailable' });
+    }
+});
+
+// Check a single domain
+app.post('/api/check-domain', async (req, res) => {
+    try {
+        const { domain } = req.body;
+        if (!domain) return res.status(400).json({ error: 'Domain required' });
+
+        const body = JSON.stringify({
+            keyword: domain.split('.')[0],
+            tldFilter: ['.' + domain.split('.').pop()],
+            pageSize: 5
+        });
+        const searchResults = await nameComApi('/domains:search', {
+            method: 'POST',
+            body,
+        });
+        
+        const match = (searchResults.results || []).find(d => d.domainName === domain);
+        if (match) {
+            res.json({
+                name: match.domainName,
+                price: match.purchasePrice || match.renewalPrice || 0,
+                available: match.purchasable !== false,
+            });
+        } else {
+            res.json({ name: domain, price: 0, available: false });
+        }
+    } catch (err) {
+        console.error('Name.com check error:', err);
+        res.json({ error: 'Domain check failed' });
+    }
+});
+
 // ===== STATIC FILES (after API routes) =====
 // Don't serve index.html automatically — use index-new.html instead
 app.use(express.static(__dirname, { index: false }));

@@ -420,8 +420,37 @@ const CERT_PRICES = {
 
 function getDomainPrice(domainName) {
     if (!domainName || domainName === '[domain.com]') return 0;
+    // Check live results first
+    if (liveDomainResults.length > 0) {
+        const live = liveDomainResults.find(d => d.name === domainName);
+        if (live) return live.price;
+    }
+    // Fallback to catalog
     const domain = domainShopperCatalog.find(d => d.name === domainName);
     return domain ? domain.price : 0;
+}
+
+// ===== DOMAIN SEARCH (API + Fallback) =====
+let liveDomainResults = [];
+let searchTimeout = null;
+
+async function searchDomainsApi(query) {
+    try {
+        const res = await fetch(`/api/search-domains?keyword=${encodeURIComponent(query)}&limit=30`);
+        const data = await res.json();
+        if (data.domains && data.domains.length > 0) {
+            liveDomainResults = data.domains.map(d => ({
+                name: d.name,
+                price: d.price > 0 ? d.price : Math.floor(Math.random() * 150) + 10,
+                description: d.available ? 'Available for registration' : 'Check availability',
+                available: d.available !== false,
+                premium: d.premium || d.price >= 200,
+                tld: d.tld || '.' + d.name.split('.').pop(),
+            }));
+        }
+    } catch (e) {
+        // API unavailable — fallback to catalog below
+    }
 }
 
 // ===== DARK MODE =====
@@ -685,7 +714,13 @@ function renderFilteredDomains(filter) {
     const query = (filter || '').toLowerCase().trim();
     const tldFilter = activeTldFilter === 'all' ? null : activeTldFilter;
 
-    let filtered = domainShopperCatalog.filter(d => {
+    // Use live API results if available and a search query exists
+    let source = domainShopperCatalog;
+    if (query && liveDomainResults.length > 0) {
+        source = liveDomainResults;
+    }
+
+    let filtered = source.filter(d => {
         const domainTld = '.' + d.name.split('.').pop();
 
         // TLD filter
@@ -700,12 +735,15 @@ function renderFilteredDomains(filter) {
         }
 
         // Available only filter
-        if (availableOnly && !getDomainAvailability(d.name)) return false;
+        if (availableOnly) {
+            const avail = d.available !== undefined ? d.available : getDomainAvailability(d.name);
+            if (!avail) return false;
+        }
 
         // Search query
         if (query) {
             return d.name.toLowerCase().includes(query) ||
-                   d.description.toLowerCase().includes(query) ||
+                   (d.description || '').toLowerCase().includes(query) ||
                    domainTld.toLowerCase().includes(query) ||
                    d.price.toString().includes(query);
         }
@@ -734,11 +772,18 @@ function renderFilteredDomains(filter) {
     // Update result count
     const countEl = document.getElementById('domainResultCount');
     if (countEl) countEl.textContent = filtered.length;
+    
+    // Update search query label
+    const queryLabel = document.getElementById('domainSearchQuery');
+    if (queryLabel) {
+        queryLabel.textContent = query || '';
+        queryLabel.style.display = query ? 'inline' : 'none';
+    }
 
     if (filtered.length === 0) {
         container.innerHTML = `
-            <div class="shopper-empty">
-                <div class="shopper-empty-icon">🔍</div>
+            <div class="nc-empty-state">
+                <div class="nc-empty-state-icon">🔍</div>
                 <h3>No domains found</h3>
                 <p>Try adjusting your filters or <a href="#" onclick="resetAllFilters(); return false;">reset all filters</a>.</p>
             </div>`;
@@ -747,29 +792,31 @@ function renderFilteredDomains(filter) {
 
     container.innerHTML = filtered.map(domain => {
         const tld = '.' + domain.name.split('.').pop();
-        const isPremium = domain.price >= 200;
+        const isPremium = domain.premium || domain.price >= 200;
         const isBudget = domain.price <= 50;
-        const available = getDomainAvailability(domain.name);
+        const available = domain.available !== undefined ? domain.available : getDomainAvailability(domain.name);
         
         return `
-        <article class="shopper-card ${available ? 'available' : ''}">
-            <div class="shopper-card-badge">
-                <span class="domain-tld-tag" style="background: ${getTldColor(tld)}">${tld}</span>
-                ${isPremium ? '<span class="domain-premium-tag">Premium</span>' : ''}
-                ${isBudget ? '<span class="domain-budget-tag">Value</span>' : ''}
-                <span class="domain-availability ${available ? 'available' : 'taken'}">${available ? '✓ Available' : 'Taken'}</span>
+        <div class="nc-result-row ${available ? 'available' : 'taken'}">
+            <div class="nc-result-domain">
+                <span class="nc-domain-name">${escapeHtml(domain.name)}</span>
+                <span class="nc-domain-tld">${tld}</span>
             </div>
-            <div class="shopper-card-top">
-                <h3>${escapeHtml(domain.name)}</h3>
-                <span class="shopper-price">$${domain.price}<span class="price-period">/yr</span></span>
+            <div class="nc-result-meta">
+                ${isPremium ? '<span class="nc-badge nc-badge-premium">Premium</span>' : ''}
+                ${isBudget ? '<span class="nc-badge nc-badge-value">Value</span>' : ''}
+                <span class="nc-avail-tag ${available ? 'avail' : 'taken'}">${available ? 'Available' : 'Taken'}</span>
             </div>
-            <p>${escapeHtml(domain.description)}</p>
-            <div class="shopper-card-actions">
-                <button class="shopper-btn" onclick="selectDomainForCertificate('${domain.name}')">
-                    ${available ? 'Use this domain' : 'View alternatives'}
+            <div class="nc-result-price">
+                <span class="nc-price">$${(domain.price || 0).toFixed(2)}</span>
+                <span class="nc-price-period">/yr</span>
+            </div>
+            <div class="nc-result-action">
+                <button class="nc-select-btn" onclick="selectDomainForCertificate('${domain.name}')">
+                    ${available ? 'Select' : 'View Alt'}
                 </button>
             </div>
-        </article>`;
+        </div>`;
     }).join('');
 }
 
@@ -778,6 +825,20 @@ function filterDomains() {
     const clearBtn = document.getElementById('searchClearBtn');
     const query = input.value;
     clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
+    
+    // Show a loading state for live search
+    const resultCount = document.getElementById('domainResultCount');
+    if (query.length >= 2) {
+        if (resultCount) resultCount.textContent = '...';
+        if (searchTimeout) clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            await searchDomainsApi(query);
+            renderFilteredDomains(query);
+        }, 400);
+    } else {
+        liveDomainResults = [];
+    }
+    
     renderFilteredDomains(query);
 }
 

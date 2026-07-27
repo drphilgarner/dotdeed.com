@@ -791,75 +791,87 @@
                 <img class="watermark-logo" src="image copy.png" alt="">
                 <span class="watermark-text">DOT DEED</span>
             </div>
-            <div class="storefront-header">
-                <div class="hero-badge">DOT DEED · Premium Domains</div>
-                <h1 class="storefront-title">Domain <span class="brand-highlight">Shopper</span></h1>
-                <p class="storefront-subtitle">Find your perfect domain and pair it with a premium <strong>DOT DEED</strong> certificate.</p>
-            </div>
 
-            <!-- Hero Search -->
-            <div class="domain-hero-search">
-                <div class="domain-search-box">
-                    <svg class="domain-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                    <input type="text" id="domainSearchInput" class="domain-search-input" placeholder="Search by name, TLD, or keyword..." oninput="filterDomains()">
-                    <button class="domain-search-clear" id="searchClearBtn" onclick="clearDomainSearch()" style="display:none;">&times;</button>
-                    <button class="domain-search-btn" onclick="filterDomains()">Search</button>
-                </div>
-                <div class="domain-search-hint">Browse premium domains — all available for registration</div>
-            </div>
-
-            <!-- TLD Quick Filters -->
-            <div class="tld-filters" id="tldFilters">
-                <button class="tld-filter active" data-tld="all" onclick="filterByTLD('all')">All</button>
-                <button class="tld-filter" data-tld=".dev" onclick="filterByTLD('.dev')">.dev</button>
-                <button class="tld-filter" data-tld=".io" onclick="filterByTLD('.io')">.io</button>
-                <button class="tld-filter" data-tld=".cloud" onclick="filterByTLD('.cloud')">.cloud</button>
-                <button class="tld-filter" data-tld=".studio" onclick="filterByTLD('.studio')">.studio</button>
-                <button class="tld-filter" data-tld=".co" onclick="filterByTLD('.co')">.co</button>
-                <button class="tld-filter" data-tld=".app" onclick="filterByTLD('.app')">.app</button>
-                <button class="tld-filter" data-tld=".ai" onclick="filterByTLD('.ai')">.ai</button>
-                <button class="tld-filter" data-tld=".tech" onclick="filterByTLD('.tech')">.tech</button>
-                <button class="tld-filter" data-tld=".design" onclick="filterByTLD('.design')">.design</button>
-                <button class="tld-filter" data-tld=".life" onclick="filterByTLD('.life')">.life</button>
-                <button class="tld-filter" data-tld=".xyz" onclick="filterByTLD('.xyz')">.xyz</button>
-            </div>
-
-            <!-- Sort & Filter Controls -->
-            <div class="shopper-controls">
-                <div class="shopper-controls-group">
-                    <label class="control-label">Price</label>
-                    <div class="price-filters">
-                        <button class="price-filter active" data-range="all" onclick="filterByPriceRange('all')">All</button>
-                        <button class="price-filter" data-range="under50" onclick="filterByPriceRange('under50')">Under $50</button>
-                        <button class="price-filter" data-range="50to150" onclick="filterByPriceRange('50to150')">$50–$150</button>
-                        <button class="price-filter" data-range="150to250" onclick="filterByPriceRange('150to250')">$150–$250</button>
-                        <button class="price-filter" data-range="over250" onclick="filterByPriceRange('over250')">$250+</button>
+            <!-- Namecheap-style Hero Search -->
+            <div class="nc-hero">
+                <div class="nc-hero-content">
+                    <div class="nc-hero-badge">DOT DEED · Domain Marketplace</div>
+                    <h1 class="nc-hero-title">Find your perfect <span class="brand-highlight">domain</span></h1>
+                    <p class="nc-hero-sub">Search thousands of domains and pair them with a premium DOT DEED certificate.</p>
+                    
+                    <div class="nc-search-box" id="ncSearchBox">
+                        <div class="nc-search-inner">
+                            <svg class="nc-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="domainSearchInput" class="nc-search-input" placeholder="Enter your dream domain name..." oninput="filterDomains()" autocomplete="off" spellcheck="false">
+                            <button class="domain-search-clear" id="searchClearBtn" onclick="clearDomainSearch()" style="display:none;">&times;</button>
+                            <button class="nc-search-btn" onclick="filterDomains()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                    <div class="nc-popular-tlds">
+                        <span>Popular:</span>
+                        <button class="tld-filter active" data-tld="all" onclick="filterByTLD('all')">All</button>
+                        <button class="tld-filter" data-tld=".com" onclick="filterByTLD('.com')">.com</button>
+                        <button class="tld-filter" data-tld=".net" onclick="filterByTLD('.net')">.net</button>
+                        <button class="tld-filter" data-tld=".org" onclick="filterByTLD('.org')">.org</button>
+                        <button class="tld-filter" data-tld=".io" onclick="filterByTLD('.io')">.io</button>
+                        <button class="tld-filter" data-tld=".dev" onclick="filterByTLD('.dev')">.dev</button>
+                        <button class="tld-filter" data-tld=".app" onclick="filterByTLD('.app')">.app</button>
+                        <button class="tld-filter" data-tld=".ai" onclick="filterByTLD('.ai')">.ai</button>
+                        <button class="tld-filter" data-tld=".co" onclick="filterByTLD('.co')">.co</button>
+                        <button class="tld-filter" data-tld=".xyz" onclick="filterByTLD('.xyz')">.xyz</button>
+                        <button class="tld-filter" data-tld=".tech" onclick="filterByTLD('.tech')">.tech</button>
                     </div>
                 </div>
-                <div class="shopper-controls-group">
-                    <label class="control-label">Sort by</label>
-                    <select id="sortSelect" class="sort-select" onchange="applySort()">
-                        <option value="default">Default order</option>
-                        <option value="price-asc">Price: Low to High</option>
-                        <option value="price-desc">Price: High to Low</option>
-                        <option value="name-asc">Name: A–Z</option>
-                        <option value="name-desc">Name: Z–A</option>
-                        <option value="tld">By TLD</option>
-                    </select>
-                </div>
-                <div class="shopper-controls-group">
-                    <label class="checkbox-row control-checkbox">
-                        <input type="checkbox" id="availableOnly" onchange="toggleAvailableOnly()">
-                        <span>Available only</span>
-                    </label>
-                </div>
             </div>
 
-            <div class="shopper-stats"><span id="domainResultCount">90</span> domains available</div>
-            <div id="domainShopperGrid" class="shopper-grid"></div>
+            <!-- Filters & Results -->
+            <div class="nc-results-section">
+                <div class="nc-results-header">
+                    <div class="nc-results-stats">
+                        <span id="domainResultCount" class="nc-result-count">90</span>
+                        <span class="nc-result-label">domains</span>
+                        <span id="domainSearchQuery" class="nc-search-query"></span>
+                    </div>
+                    <div class="nc-results-controls">
+                        <div class="nc-control-group">
+                            <label>Price</label>
+                            <div class="nc-price-filters">
+                                <button class="nc-price-btn active" data-range="all" onclick="filterByPriceRange('all')">All</button>
+                                <button class="nc-price-btn" data-range="under50" onclick="filterByPriceRange('under50')">Under $50</button>
+                                <button class="nc-price-btn" data-range="50to150" onclick="filterByPriceRange('50to150')">$50–$150</button>
+                                <button class="nc-price-btn" data-range="150to250" onclick="filterByPriceRange('150to250')">$150–$250</button>
+                                <button class="nc-price-btn" data-range="over250" onclick="filterByPriceRange('over250')">$250+</button>
+                            </div>
+                        </div>
+                        <div class="nc-control-group">
+                            <label>Sort</label>
+                            <select id="sortSelect" class="nc-sort-select" onchange="applySort()">
+                                <option value="default">Default</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="price-desc">Price: High to Low</option>
+                                <option value="name-asc">Name: A–Z</option>
+                                <option value="name-desc">Name: Z–A</option>
+                                <option value="tld">By TLD</option>
+                            </select>
+                        </div>
+                        <div class="nc-control-group">
+                            <label class="nc-avail-check">
+                                <input type="checkbox" id="availableOnly" onchange="toggleAvailableOnly()">
+                                <span>Available only</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="domainShopperGrid" class="nc-results-grid">
+                    <!-- Results populated by JS -->
+                </div>
+            </div>
         </section>
 
         <!-- AUTH MODALS -->
