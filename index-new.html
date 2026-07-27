@@ -17,7 +17,10 @@
                 <div class="logo-icon-wrapper">
                     <img class="logo-svg" src="image copy.png" alt="DOT DEED">
                 </div>
-                <span class="logo-text">DOT DEED</span>
+                <div class="logo-text-group">
+                    <span class="logo-text">DOT DEED</span>
+                    <span class="logo-tagline">Registry of Digital Estates</span>
+                </div>
             </div>
             <nav class="nav-links">
                 <a href="#storefront" class="nav-link active">Home</a>
@@ -372,7 +375,7 @@
                     </div>
                     <h2 class="about-card-title">Fully Customizable</h2>
                     <p class="about-card-text">
-                        Choose from <strong>Essential</strong>, <strong>Premium</strong>, or <strong>Elite</strong> tiers — each with its own level of elegance. Add custom colors, fonts, seals, gold foil, framing, and even a matching business card. Your certificate, your way.
+                        Choose from <strong>Essential</strong>, <strong>Premium</strong>, or <strong>Elite</strong> tiers — each with its own level of elegance. Add custom colors, fonts, seals, gold foil, framing, and choose portrait or landscape orientation. Your certificate, your way.
                     </p>
                 </div>
             </div>
@@ -467,7 +470,7 @@
                         <span class="tier-feature">✓ Border style</span>
                         <span class="tier-feature">✓ Gold foil accents</span>
                         <span class="tier-feature">✓ Filigree pattern</span>
-                        <span class="tier-feature">✓ Business card layout</span>
+                        <span class="tier-feature">✓ Free display frame</span>
                     </div>
                     <button class="tier-select-btn">Select Elite</button>
                 </div>
@@ -497,9 +500,9 @@
                     <!-- Tier Selector -->
                     <div class="studio-tier-selector">
                         <span class="studio-tier-label">Certificate Tier:</span>
-                        <button class="studio-tier-pill active" data-tier="Essential" onclick="changeTier('Essential')">Essential</button>
-                        <button class="studio-tier-pill" data-tier="Premium" onclick="changeTier('Premium')">Premium</button>
-                        <button class="studio-tier-pill" data-tier="Elite" onclick="changeTier('Elite')">Elite</button>
+                        <button class="studio-tier-pill active" data-tier="Essential" onclick="changeTier('Essential')">Essential <span class="tier-pill-price">$15</span></button>
+                        <button class="studio-tier-pill" data-tier="Premium" onclick="changeTier('Premium')">Premium <span class="tier-pill-price">$30</span></button>
+                        <button class="studio-tier-pill" data-tier="Elite" onclick="changeTier('Elite')">Elite <span class="tier-pill-price">$50</span></button>
                     </div>
 
                     <!-- Gift / Self Toggle -->
@@ -642,12 +645,33 @@
                         </div>
                     </div>
 
+                    <div class="form-field">
+                        <label class="form-label">Certificate Orientation</label>
+                        <div style="display:flex;gap:6px;">
+                            <label class="orient-btn active" data-orient="portrait" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.78rem;font-weight:600;color:var(--text-secondary);transition:all .15s;background:var(--bg-primary);">
+                                <input type="radio" name="certOrientation" value="portrait" checked style="display:none">
+                                <span>⬜ Portrait</span>
+                            </label>
+                            <label class="orient-btn" data-orient="landscape" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.78rem;font-weight:600;color:var(--text-secondary);transition:all .15s;background:var(--bg-primary);">
+                                <input type="radio" name="certOrientation" value="landscape" style="display:none">
+                                <span>⬛ Landscape</span>
+                            </label>
+                        </div>
+                        <span class="form-hint">Choose between vertical or horizontal certificate layout.</span>
+                    </div>
+
                     <div id="frameUpgradeSection" class="form-field">
+                        <label class="form-label">Display Option</label>
                         <label class="checkbox-row">
-                            <input type="checkbox" id="frameUpgrade">
-                            <span>Add frame</span>
+                            <input type="checkbox" id="frameUpgrade" checked>
+                            <span>Wood frame <span class="frame-price-tag">+$12</span></span>
                         </label>
-                        <span class="form-hint">Choose a premium wood finish for your display frame.</span>
+                        <span class="form-hint">Premium wood finish frame — ready to hang.</span>
+                        <label class="checkbox-row" style="margin-top: 0.4rem;">
+                            <input type="checkbox" id="scrollOption">
+                            <span>Scroll delivery <span class="frame-price-tag">Free</span></span>
+                        </label>
+                        <span class="form-hint">Rolled certificate in a protective tube. No frame.</span>
                     </div>
 
                     <div id="frameOptionsSection" class="form-field hidden">
@@ -658,18 +682,6 @@
                             <option value="mahogany">Mahogany</option>
                             <option value="ebony">Ebony</option>
                         </select>
-                    </div>
-
-                    <div id="businessCardSection" class="form-field hidden">
-                        <label class="checkbox-row">
-                            <input type="checkbox" id="businessCardOption" onchange="onBizCardToggle()">
-                            <span>Include business card presentation</span>
-                        </label>
-                        <span class="form-hint">Premium and Elite certificates can be paired with a matching business card layout.</span>
-                        <button id="openBizCardBtn" class="bizcard-open-btn hidden" onclick="openBizCardEditor()">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                            Customize Business Card
-                        </button>
                     </div>
 
 
@@ -689,98 +701,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- BIZ CARD EDITOR PANEL -->
-        <section id="bizcard-editor" class="panel bizcard-panel">
-            <div class="bizcard-header">
-                <button class="back-button" onclick="closeBizCardEditor()">← Back to Studio</button>
-                <div class="bizcard-title-group">
-                    <span class="studio-brand">
-                        <img class="studio-brand-logo" src="image copy.png" alt="">
-                        DOT DEED
-                    </span>
-                    <h1 class="bizcard-title">Business Card Editor</h1>
-                </div>
-            </div>
-            <div class="bizcard-container">
-                <!-- LEFT: FORM -->
-                <div class="bizcard-form">
-                    <h2 class="bizcard-form-title">Card Details</h2>
-
-                    <div class="bizcard-field">
-                        <label for="bizName">Your Name</label>
-                        <input type="text" id="bizName" class="bizcard-input" placeholder="Jane Doe" oninput="updateBizCardPreview()">
-                    </div>
-                    <div class="bizcard-field">
-                        <label for="bizTitle">Title / Role</label>
-                        <input type="text" id="bizTitle" class="bizcard-input" placeholder="Digital Estate Holder" oninput="updateBizCardPreview()">
-                    </div>
-                    <div class="bizcard-field">
-                        <label for="bizCompany">Company / Registry</label>
-                        <input type="text" id="bizCompany" class="bizcard-input" value="DOT DEED · Registry of Digital Estates" oninput="updateBizCardPreview()">
-                    </div>
-                    <div class="bizcard-field">
-                        <label for="bizDomain">Domain</label>
-                        <input type="text" id="bizDomain" class="bizcard-input" placeholder="janedoe.com" oninput="updateBizCardPreview()">
-                    </div>
-                    <div class="bizcard-field">
-                        <label for="bizEmail">Email</label>
-                        <input type="email" id="bizEmail" class="bizcard-input" placeholder="jane@domain.com" oninput="updateBizCardPreview()">
-                    </div>
-                    <div class="bizcard-field">
-                        <label for="bizPhone">Phone</label>
-                        <input type="text" id="bizPhone" class="bizcard-input" placeholder="+1 (555) 123-4567" oninput="updateBizCardPreview()">
-                    </div>
-
-                    <h2 class="bizcard-form-title" style="margin-top: 1.5rem;">Style</h2>
-
-                    <div class="bizcard-field">
-                        <label for="bizCardColor">Accent Color</label>
-                        <input type="color" id="bizCardColor" class="bizcard-color" value="#6B0B22" onchange="updateBizCardPreview()">
-                    </div>
-                    <div class="bizcard-field">
-                        <label for="bizCardFont">Font</label>
-                        <select id="bizCardFont" class="bizcard-select" onchange="updateBizCardPreview()">
-                            <option value="Georgia">Georgia (Serif)</option>
-                            <option value="Inter">Inter (Sans)</option>
-                            <option value="Playfair Display">Playfair Display</option>
-                            <option value="Courier New">Courier New (Mono)</option>
-                        </select>
-                    </div>
-                    <div class="bizcard-field">
-                        <label for="bizCardLayout">Layout</label>
-                        <select id="bizCardLayout" class="bizcard-select" onchange="updateBizCardPreview()">
-                            <option value="classic">Classic</option>
-                            <option value="modern">Modern</option>
-                            <option value="minimal">Minimal</option>
-                            <option value="elegant">Elegant</option>
-                        </select>
-                    </div>
-                    <div class="bizcard-field">
-                        <label class="checkbox-row">
-                            <input type="checkbox" id="bizCardLogo" checked onchange="updateBizCardPreview()">
-                            <span>Show DOT DEED emblem</span>
-                        </label>
-                    </div>
-
-                    <div class="bizcard-actions">
-                        <button class="btn-export" onclick="saveBizCard()">Save &amp; Return</button>
-                        <button class="btn-print" onclick="closeBizCardEditor()">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- RIGHT: PREVIEW -->
-                <div class="bizcard-preview-section">
-                    <div class="preview-label">Live Preview</div>
-                    <div class="bizcard-preview-stage" id="bizCardPreviewStage">
-                        <div class="bizcard-preview-inner" id="bizCardPreviewInner">
-                            <!-- Rendered by JS -->
-                        </div>
-                    </div>
-                    <p class="bizcard-preview-hint">Front of card — standard business card dimensions (3.5" × 2")</p>
                 </div>
             </div>
         </section>
@@ -1213,6 +1133,9 @@
 
     <!-- Hidden print container -->
     <div id="printContainer" class="print-container"></div>
+
+    <!-- Floating + button -->
+    <button class="fab-btn" onclick="navigateToPanel('#studio'); updateNavActive('#studio');" title="Create a certificate">+</button>
 
     <script src="studio.js"></script>
 </body>

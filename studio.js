@@ -526,16 +526,14 @@ function navigateToPanel(panelId) {
 
 // ===== DEBOUNCED PREVIEW LISTENERS =====
 function setupPreviewListeners() {
-    // Create debounced version here — updatePreview is guaranteed to be defined by DOMContentLoaded
     const debouncedPreview = debounce(updatePreview);
     
-    // All studio form inputs that should trigger a live preview update
     const previewInputs = [
         'recipientName', 'domainName', 'issueDate', 'certificateUpgrade',
         'upgradeNotes', 'fontStyle', 'primaryColor', 'secondaryColor',
         'borderStyle', 'sealStyle', 'paperTexture', 'awardTitle',
         'cornerOrnamentStyle', 'filigreePattern', 'goldFoilAccent',
-        'frameUpgrade', 'frameWoodType'
+        'frameUpgrade', 'frameWoodType', 'scrollOption'
     ];
 
     previewInputs.forEach(id => {
@@ -545,6 +543,41 @@ function setupPreviewListeners() {
             ? 'input' : 'change';
         el.addEventListener(eventType, debouncedPreview);
     });
+
+    // Orientation radio buttons
+    document.querySelectorAll('input[name="certOrientation"]').forEach(radio => {
+        radio.addEventListener('change', debouncedPreview);
+    });
+
+    // Orientation toggle styling
+    document.querySelectorAll('.orient-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.orient-btn').forEach(b => {
+                b.style.borderColor = 'var(--border-light)';
+                b.style.background = 'var(--bg-primary)';
+                b.style.color = 'var(--text-secondary)';
+            });
+            this.style.borderColor = 'var(--deep-maroon)';
+            this.style.background = 'rgba(107,11,34,0.06)';
+            this.style.color = 'var(--deep-maroon)';
+            const radio = this.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
+
+    // Mutual exclusion: frame ⇄ scroll
+    const frameCb = document.getElementById('frameUpgrade');
+    const scrollCb = document.getElementById('scrollOption');
+    if (frameCb) {
+        frameCb.addEventListener('change', () => {
+            if (frameCb.checked && scrollCb) scrollCb.checked = false;
+        });
+    }
+    if (scrollCb) {
+        scrollCb.addEventListener('change', () => {
+            if (scrollCb.checked && frameCb) frameCb.checked = false;
+        });
+    }
 }
 
 function updateNavActive(hash) {
@@ -574,9 +607,10 @@ function openStudio(cardElement, type) {
     document.getElementById('issueDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('certificateUpgrade').checked = false;
     document.getElementById('upgradeNotes').value = '';
-    document.getElementById('frameUpgrade').checked = false;
+    document.getElementById('frameUpgrade').checked = true;
     document.getElementById('frameWoodType').value = 'walnut';
-    document.getElementById('businessCardOption').checked = false;
+    const scrollOpt = document.getElementById('scrollOption');
+    if (scrollOpt) scrollOpt.checked = false;
     document.getElementById('sealStyle').value = 'classic';
     document.getElementById('paperTexture').value = 'smooth';
     document.getElementById('awardTitle').value = '';
@@ -634,10 +668,11 @@ function changeTier(tier) {
     document.getElementById('certificateUpgrade').checked = false;
     document.getElementById('upgradeNotesSection').classList.add('hidden');
     
-    // Reset business card for non-Elite
-    if (tier !== 'Elite') {
-        document.getElementById('businessCardOption').checked = false;
-    }
+    // Reset frame to default (checked)
+    document.getElementById('frameUpgrade').checked = true;
+    const scrollOpt = document.getElementById('scrollOption');
+    if (scrollOpt) scrollOpt.checked = false;
+    
     
     updatePreview();
 }
@@ -959,7 +994,6 @@ function updatePreview() {
     if (certUpgradeSection) certUpgradeSection.classList.toggle('hidden', isEssential);
     if (isEssential) {
         document.getElementById('frameUpgrade').checked = false;
-        document.getElementById('businessCardOption').checked = false;
         document.getElementById('certificateUpgrade').checked = false;
     }
 
@@ -970,7 +1004,6 @@ function updatePreview() {
 
     const tierCustomizationSection = document.getElementById('tierCustomizationSection');
     const frameOptionsSection = document.getElementById('frameOptionsSection');
-    const businessCardSection = document.getElementById('businessCardSection');
     const capabilities = getTierCapabilities(currentCertificate.type);
     if (tierCustomizationSection) {
         tierCustomizationSection.classList.toggle('hidden', !(currentCertificate.customizationEnabled && capabilities.canChangeFont));
@@ -978,18 +1011,26 @@ function updatePreview() {
     if (frameOptionsSection) {
         frameOptionsSection.classList.toggle('hidden', !document.getElementById('frameUpgrade').checked);
     }
-    if (businessCardSection) {
-        const type = currentCertificate.type.toLowerCase();
-        businessCardSection.classList.toggle('hidden', type === 'essential');
-    }
 
     const certHTML = renderCertificate(currentCertificate);
     const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
+    const hasScroll = document.getElementById('scrollOption')?.checked || false;
     const frameWoodType = document.getElementById('frameWoodType')?.value || 'walnut';
     
     const innerContainer = document.getElementById('certCanvasInner');
     if (innerContainer) {
-        if (hasFrame) {
+        if (hasScroll) {
+            innerContainer.innerHTML = `
+                <div style="text-align:center;padding:1rem;">
+                    <div style="background:linear-gradient(180deg,#f5f0e8,#e8dcc8);border-radius:50% 50% 4px 4px;padding:0.5rem 2rem 1.5rem;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,0.12);">
+                        <div style="font-size:0.65rem;color:#8b7355;letter-spacing:2px;text-transform:uppercase;margin-bottom:0.25rem;">Rolled Certificate</div>
+                        <div style="width:120px;height:8px;background:linear-gradient(90deg,#d4c5a9,#f0e6d0,#d4c5a9);border-radius:4px;margin:0 auto;box-shadow:inset 0 1px 2px rgba(0,0,0,0.1);"></div>
+                        <div style="margin-top:0.5rem;font-size:0.6rem;color:#a09070;">Shipped in a protective tube</div>
+                    </div>
+                    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-secondary);">${cert.type} Certificate · Scroll delivery</div>
+                </div>
+            `;
+        } else if (hasFrame) {
             innerContainer.innerHTML = `
                 <div class="frame-outer">
                     <div class="frame-wood" data-wood="${frameWoodType}">
@@ -1027,34 +1068,7 @@ function renderCertificate(cert) {
     const filigreePattern = customizationEnabled && capabilities.canChangeFiligree ? document.getElementById('filigreePattern')?.value || 'none' : 'none';
     
     let businessCardMarkup = '';
-    if (cert.type.toLowerCase() === 'elite' && document.getElementById('businessCardOption')?.checked) {
-        const bizName = document.getElementById('bizName')?.value || cert.recipientName || 'Your Name';
-        const bizTitle = document.getElementById('bizTitle')?.value || 'Digital Estate Holder';
-        const bizCompany = document.getElementById('bizCompany')?.value || 'DOT DEED';
-        const bizDomain = document.getElementById('bizDomain')?.value || cert.domainName || 'domain.com';
-        const bizEmail = document.getElementById('bizEmail')?.value || '';
-        const bizPhone = document.getElementById('bizPhone')?.value || '';
-        const bizAccent = document.getElementById('bizCardColor')?.value || '#6B0B22';
-        const bizFont = document.getElementById('bizCardFont')?.value || 'Georgia';
-        const bizLayout = document.getElementById('bizCardLayout')?.value || 'classic';
-        const bizShowLogo = document.getElementById('bizCardLogo')?.checked;
-        
-        const bizContact = [bizEmail, bizPhone].filter(Boolean).length > 0
-            ? `<div style="font-size:0.55rem;color:#a1a1a6;margin-top:3px;">${[bizEmail, bizPhone].filter(Boolean).join(' · ')}</div>`
-            : '';
-        const bizLogoMarkup = bizShowLogo ? `<img src="image copy.png" style="position:absolute;top:6px;right:8px;width:20px;opacity:0.12;">` : '';
-        
-        businessCardMarkup = `
-            <div style="margin: 0.75rem auto 0; padding: 0.65rem 0.85rem; border: 1px dashed ${secondaryColor}; border-radius: 6px; display: inline-block; text-align: left; position: relative; font-family: ${bizFont}; width: 100%; max-width: 240px;">
-                ${bizLogoMarkup}
-                <div style="font-size:0.75rem;font-weight:700;color:#1d1d1f;">${escapeHtml(bizName)}</div>
-                <div style="font-size:0.5rem;color:${bizAccent};font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(bizTitle)}</div>
-                <div style="width:24px;height:1.5px;background:${bizAccent};margin:4px 0;"></div>
-                <div style="font-size:0.5rem;color:#86868b;">${escapeHtml(bizCompany)}</div>
-                <div style="font-size:0.55rem;color:${bizAccent};font-weight:600;font-family:'Courier New',monospace;">${escapeHtml(bizDomain)}</div>
-                ${bizContact}
-            </div>`;
-    }
+    
     const customizationMarkup = customizationEnabled ? `<div class="cert-notes" style="font-style: italic; font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.75rem;">${escapeHtml(cert.customizationNotes || '')}</div>` : '';
 
     const borderVariant = borderStyle === 'double' ? 'cert-border-double' : borderStyle === 'ornate' ? 'cert-border-ornate' : 'cert-border-classic';
@@ -1154,9 +1168,11 @@ function renderCertificate(cert) {
     }
 
     const goldFoilClass = goldFoil ? 'gold-foil' : '';
+    const isLandscape = document.querySelector('input[name="certOrientation"]:checked')?.value === 'landscape';
+    const orientClass = isLandscape ? 'cert-landscape' : '';
 
     return `
-        <div class="certificate-wrapper ${borderVariant} ${paperClass} ${goldFoilClass} ${filigreeClass}">
+        <div class="certificate-wrapper ${borderVariant} ${paperClass} ${goldFoilClass} ${filigreeClass} ${orientClass}">
             ${cornerMarkup}
             ${filigreeMarkup}
             
@@ -1344,7 +1360,7 @@ function populateBilling() {
     const certPrice = CERT_PRICES[type] || 15;
     const domainPrice = currentCertificate.domainPrice || 0;
     const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
-    const hasBizCard = document.getElementById('businessCardOption')?.checked || false;
+    const hasScroll = document.getElementById('scrollOption')?.checked || false;
     
     let itemsHtml = '';
     let subtotal = 0;
@@ -1372,7 +1388,17 @@ function populateBilling() {
         subtotal += domainPrice;
     }
     
-    if (hasFrame) {
+    // Frame or Scroll
+    if (hasScroll) {
+        itemsHtml += `
+            <div class="billing-item">
+                <div class="billing-item-left">
+                    <div class="billing-item-name">Scroll Delivery</div>
+                    <div class="billing-item-desc">Certificate rolled in protective tube</div>
+                </div>
+                <span class="billing-item-price">FREE</span>
+            </div>`;
+    } else if (hasFrame) {
         const framePrice = type === 'Elite' ? 0 : 12;
         itemsHtml += `
             <div class="billing-item">
@@ -1385,17 +1411,18 @@ function populateBilling() {
         subtotal += framePrice;
     }
     
-    if (hasBizCard) {
-        const bizCardPrice = type === 'Elite' ? 0 : 8;
+    // Custom alterations charge (non-Elite only)
+    const hasAlterations = document.getElementById('certificateUpgrade')?.checked || false;
+    if (hasAlterations && type !== 'Elite') {
         itemsHtml += `
             <div class="billing-item">
                 <div class="billing-item-left">
-                    <div class="billing-item-name">Business Card</div>
-                    <div class="billing-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Matching business card layout'}</div>
+                    <div class="billing-item-name">Custom Alterations</div>
+                    <div class="billing-item-desc">Personalized certificate customizations</div>
                 </div>
-                <div class="billing-item-price">${type === 'Elite' ? 'FREE' : '$8.00'}</div>
+                <span class="billing-item-price">$5.00</span>
             </div>`;
-        subtotal += bizCardPrice;
+        subtotal += 5;
     }
     
     const shipping = subtotal >= 50 ? 0 : subtotal > 0 ? 9.99 : 0;
@@ -1578,77 +1605,6 @@ if (!document.querySelector('style[data-notifications]')) {
         }
     `;
     document.head.appendChild(style);
-}
-
-// ===== BUSINESS CARD EDITOR =====
-function onBizCardToggle() {
-    const checked = document.getElementById('businessCardOption').checked;
-    const btn = document.getElementById('openBizCardBtn');
-    if (btn) btn.classList.toggle('hidden', !checked);
-    updatePreview();
-}
-
-function openBizCardEditor() {
-    // Pre-fill fields from certificate data
-    const cert = currentCertificate;
-    document.getElementById('bizName').value = cert.recipientName || '';
-    document.getElementById('bizDomain').value = cert.domainName || '';
-    
-    // If no title set, use a default
-    if (!document.getElementById('bizTitle').value) {
-        document.getElementById('bizTitle').value = 'Digital Estate Holder';
-    }
-    
-    updateBizCardPreview();
-    navigateToPanel('#bizcard-editor');
-}
-
-function closeBizCardEditor() {
-    navigateToPanel('#studio');
-}
-
-function updateBizCardPreview() {
-    const name = document.getElementById('bizName').value || 'Your Name';
-    const title = document.getElementById('bizTitle').value || 'Digital Estate Holder';
-    const company = document.getElementById('bizCompany').value || 'DOT DEED';
-    const domain = document.getElementById('bizDomain').value || 'domain.com';
-    const email = document.getElementById('bizEmail').value || '';
-    const phone = document.getElementById('bizPhone').value || '';
-    const accent = document.getElementById('bizCardColor').value || '#6B0B22';
-    const font = document.getElementById('bizCardFont').value || 'Georgia';
-    const layout = document.getElementById('bizCardLayout').value || 'classic';
-    const showLogo = document.getElementById('bizCardLogo').checked;
-    
-    const container = document.getElementById('bizCardPreviewInner');
-    if (!container) return;
-    
-    // Compute light accent for gradients
-    const accentLight = accent + '18';
-    
-    const logoMarkup = showLogo ? `<img class="bizcard-render-logo" src="image copy.png" alt="">` : '';
-    const contactMarkup = [email, phone].filter(Boolean).length > 0
-        ? `<div class="bizcard-render-contact">${[email, phone].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>`
-        : '';
-    
-    container.innerHTML = `
-        <div class="bizcard-render bizcard-render-${layout}" style="font-family: ${font}; --biz-accent: ${accent}; --biz-accent-light: ${accentLight};">
-            ${logoMarkup}
-            <div class="bizcard-render-name">${escapeHtml(name)}</div>
-            <div class="bizcard-render-title">${escapeHtml(title)}</div>
-            <div class="bizcard-render-divider"></div>
-            <div class="bizcard-render-company">${escapeHtml(company)}</div>
-            <div class="bizcard-render-domain">${escapeHtml(domain)}</div>
-            ${contactMarkup}
-        </div>
-    `;
-}
-
-function saveBizCard() {
-    // The business card data is now saved in the DOM fields
-    // Just close and refresh the certificate preview
-    showNotification('Business card updated!');
-    closeBizCardEditor();
-    updatePreview();
 }
 
 console.log('✓ Registry studio initialized');
