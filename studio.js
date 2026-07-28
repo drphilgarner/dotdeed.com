@@ -408,7 +408,9 @@ let currentCertificate = {
     registryId: '',
     issueDate: new Date().toISOString().split('T')[0],
     customizationEnabled: false,
-    customizationNotes: ''
+    customizationNotes: '',
+    claimToken: null,
+    claimUrl: null,
 };
 
 // ===== PRICING =====
@@ -1270,6 +1272,16 @@ function renderCertificate(cert) {
                     </div>
                     <div class="cert-date">Issued this ${formattedDate}</div>
                     <div class="cert-id">Certificate No. ${cert.registryId}</div>
+                    ${cert.claimToken ? `
+                    <div class="cert-claim-section" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid ${primaryColor}33; text-align: center;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(cert.claimUrl || '')}" 
+                             alt="Claim your domain QR code" 
+                             style="width: 60px; height: 60px; display: block; margin: 0 auto 0.3rem;">
+                        <div style="font-size: 0.6rem; color: var(--text-secondary, #666); letter-spacing: 0.5px;">
+                            Scan to claim ${escapeHtml(cert.domainName)}
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         </div>
@@ -1728,7 +1740,33 @@ async function placeOrder() {
         }
         
         if (paymentIntent.status === 'succeeded') {
-            // Step 5: Create Prodigi print order
+            // Step 5: Create claim token for domain gifting
+            let claimToken = null;
+            let claimUrl = null;
+            if (currentCertificate.domainName && currentCertificate.domainName !== '[domain.com]') {
+                try {
+                    const claimRes = await fetch('/api/create-claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            domainName: currentCertificate.domainName,
+                            buyerName: name,
+                            buyerEmail: userEmail,
+                        }),
+                    });
+                    const claimData = await claimRes.json();
+                    if (claimData.token) {
+                        claimToken = claimData.token;
+                        claimUrl = claimData.claimUrl;
+                        currentCertificate.claimToken = claimToken;
+                        currentCertificate.claimUrl = claimUrl;
+                    }
+                } catch (e) {
+                    console.log('Claim creation skipped, domain gifting not available:', e.message);
+                }
+            }
+            
+            // Step 6: Create Prodigi print order
             btn.textContent = 'Placing print order…';
             
             const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
@@ -1760,6 +1798,7 @@ async function placeOrder() {
                     },
                     certificateType: currentCertificate.type,
                     domainName: currentCertificate.domainName,
+                    claimToken: claimToken,
                 }),
             });
             
@@ -1771,6 +1810,11 @@ Your ${currentCertificate.type} certificate is being printed.`;
             if (orderData.orderId) {
                 successMsg += `\n\n📦 Print order #: ${orderData.orderId}`;
                 successMsg += `\n🔗 Track at: http://localhost:5000/?order=${orderData.orderId}`;
+            }
+            if (claimToken) {
+                successMsg += `\n\n🎁 Domain gifting active!`;
+                successMsg += `\nThe QR code on the certificate will let the recipient claim ${currentCertificate.domainName}.`;
+                successMsg += `\n🔗 Claim link: ${claimUrl}`;
             }
             const finalTotal = document.getElementById('billingTotal').textContent;
             successMsg += `\n\nShipped to:\n${name}\n${address}\n${city}, ${state} ${zip}\n${country}\n\nOrder total: ${finalTotal}\n\nThank you for your order!`;
@@ -1928,3 +1972,92 @@ console.log('✓ Registry studio initialized');
         content.innerHTML = `<p style="color:var(--danger);">Failed to load order status. Please try again later.</p>`;
     }
 })();
+
+// ===== CLAIM PAGE =====
+(async function checkClaimOnLoad() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) return;
+
+    const claimPanel = document.getElementById('claim-page');
+    const statusDiv = document.getElementById('claimStatus');
+    if (!claimPanel || !statusDiv) return;
+
+    // Hide all other panels
+    document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+    claimPanel.style.display = 'block';
+
+    try {
+        const res = await fetch(`/api/claim/${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (data.error) {
+            statusDiv.innerHTML = `<p style="color:var(--danger);">This claim link is invalid or expired.</p>`;
+            return;
+        }
+
+        if (data.status === 'claimed') {
+            statusDiv.innerHTML = `
+                <div style="background:rgba(107,11,34,0.06);border-radius:12px;padding:1.5rem;border:1px solid rgba(107,11,34,0.1);">
+                    <div style="font-size:2rem;margin-bottom:0.5rem;">✅</div>
+                    <h3 style="margin:0.5rem 0;">${data.domainName}</h3>
+                    <p style="color:var(--text-secondary);">This domain has already been claimed.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Show claim form
+        statusDiv.innerHTML = `
+            <div style="background:rgba(107,11,34,0.06);border-radius:12px;padding:1.5rem;border:1px solid rgba(107,11,34,0.1);">
+                <div style="font-size:1.5rem;font-weight:600;margin-bottom:0.25rem;color:var(--deep-maroon);">${data.domainName}</div>
+                <p style="color:var(--text-secondary);margin-bottom:1.5rem;">${data.buyerName ? data.buyerName + ' has' : 'Someone has'} gifted you this domain! Enter your email to claim it.</p>
+                <form id="claimForm" onsubmit="return submitClaim('${token}')">
+                    <input type="email" id="claimEmail" placeholder="your@email.com" required
+                        style="width:100%;padding:0.7rem 1rem;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:inherit;font-size:0.95rem;margin-bottom:0.75rem;box-sizing:border-box;">
+                    <button type="submit"
+                        style="width:100%;padding:0.7rem 1rem;border-radius:6px;border:none;background:var(--deep-maroon);color:#fff;font-size:0.95rem;font-weight:600;cursor:pointer;">
+                        Claim My Domain
+                    </button>
+                    <p id="claimError" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none;"></p>
+                </form>
+            </div>
+        `;
+    } catch (e) {
+        statusDiv.innerHTML = `<p style="color:var(--danger);">Failed to load. Please try again later.</p>`;
+    }
+})();
+
+async function submitClaim(token) {
+    const email = document.getElementById('claimEmail')?.value;
+    const errorEl = document.getElementById('claimError');
+    if (!email || !email.includes('@')) {
+        if (errorEl) { errorEl.textContent = 'Please enter a valid email address.'; errorEl.style.display = 'block'; }
+        return false;
+    }
+
+    try {
+        const res = await fetch(`/api/claim/${encodeURIComponent(token)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            if (errorEl) { errorEl.textContent = data.error; errorEl.style.display = 'block'; }
+            return false;
+        }
+
+        document.getElementById('claimStatus').innerHTML = `
+            <div style="background:rgba(107,11,34,0.06);border-radius:12px;padding:1.5rem;border:1px solid rgba(107,11,34,0.1);">
+                <div style="font-size:2rem;margin-bottom:0.5rem;">🎉</div>
+                <h3 style="margin:0.5rem 0;">${data.domainName} is yours!</h3>
+                <p style="color:var(--text-secondary);">Check your email for next steps to manage your domain.</p>
+            </div>
+        `;
+    } catch (e) {
+        if (errorEl) { errorEl.textContent = 'Something went wrong. Please try again.'; errorEl.style.display = 'block'; }
+    }
+    return false;
+}

@@ -64,10 +64,26 @@ db.exec(`
         shipping_method TEXT,
         has_frame INTEGER DEFAULT 0,
         total_paid REAL,
+        claim_token TEXT,
         status TEXT DEFAULT 'pending',
         prodigi_status TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
+    )
+`);
+
+// Claims table for domain gifting
+db.exec(`
+    CREATE TABLE IF NOT EXISTS claims (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        domain_name TEXT NOT NULL,
+        claim_token TEXT UNIQUE NOT NULL,
+        buyer_name TEXT,
+        buyer_email TEXT,
+        recipient_email TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT DEFAULT (datetime('now')),
+        claimed_at TEXT
     )
 `);
 
@@ -688,6 +704,89 @@ app.get('/api/order-status', (req, res) => {
     }
 });
 
+// ===== DOMAIN CLAIM SYSTEM (QR code gifting) =====
+// Generate a unique claim token for a purchased domain
+app.post('/api/create-claim', (req, res) => {
+    try {
+        const { domainName, buyerName, buyerEmail } = req.body;
+        if (!domainName) return res.status(400).json({ error: 'Domain name required' });
+
+        const token = crypto.randomBytes(16).toString('hex');
+        const claimUrl = `${SITE_URL}/claim?token=${token}`;
+
+        db.prepare(`
+            INSERT INTO claims (domain_name, claim_token, buyer_name, buyer_email, status)
+            VALUES (?, ?, ?, ?, 'pending')
+        `).run(domainName, token, buyerName || null, buyerEmail || null);
+
+        res.json({ token, claimUrl, domainName });
+    } catch (err) {
+        console.error('Create claim error:', err);
+        res.status(500).json({ error: 'Failed to create claim' });
+    }
+});
+
+// Look up a claim by token (for the QR code claim page)
+app.get('/api/claim/:token', (req, res) => {
+    try {
+        const claim = db.prepare('SELECT * FROM claims WHERE claim_token = ?').get(req.params.token);
+        if (!claim) return res.status(404).json({ error: 'Invalid or expired claim link' });
+
+        res.json({
+            domainName: claim.domain_name,
+            buyerName: claim.buyer_name,
+            status: claim.status,
+            createdAt: claim.created_at,
+            // Only show recipient email if already claimed
+            recipientEmail: claim.recipient_email || null,
+        });
+    } catch (err) {
+        console.error('Claim lookup error:', err);
+        res.status(500).json({ error: 'Failed to look up claim' });
+    }
+});
+
+// Claim a domain (recipient activates it)
+app.post('/api/claim/:token', (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email || !email.includes('@')) {
+            return res.status(400).json({ error: 'A valid email address is required' });
+        }
+
+        const claim = db.prepare('SELECT * FROM claims WHERE claim_token = ?').get(req.params.token);
+        if (!claim) return res.status(404).json({ error: 'Invalid claim link' });
+        if (claim.status !== 'pending') return res.status(400).json({ error: 'Domain already claimed' });
+
+        // Mark as claimed
+        db.prepare(`
+            UPDATE claims SET status = 'claimed', recipient_email = ?, claimed_at = datetime('now')
+            WHERE claim_token = ?
+        `).run(email, req.params.token);
+
+        // Send confirmation to buyer
+        if (claim.buyer_email) {
+            sendEmail({
+                to: claim.buyer_email,
+                subject: `🎁 ${claim.domain_name} has been claimed!`,
+                text: `Great news! The recipient has claimed ${claim.domain_name}!\n\nThey'll be able to manage their domain through their account.`,
+            });
+        }
+
+        // Send welcome to recipient
+        sendEmail({
+            to: email,
+            subject: `🎉 You've received ${claim.domain_name}!`,
+            text: `Congratulations!\n\n${claim.buyer_name || 'Someone'} has gifted you the domain ${claim.domain_name}!\n\nSign in to your DOT DEED account to manage your domain.\n\n${SITE_URL}/claim?token=${claim.claim_token}`,
+        });
+
+        res.json({ message: 'Domain claimed successfully!', domainName: claim.domain_name });
+    } catch (err) {
+        console.error('Claim error:', err);
+        res.status(500).json({ error: 'Failed to claim domain' });
+    }
+});
+
 // ===== NAME.COM API =====
 const NAMECOM_USER = 'strixxtheCEO-test';
 const NAMECOM_TOKEN = 'dc77f73b4dcaab29cf43efc27338a7ad154f2da6';
@@ -809,8 +908,8 @@ app.post('/api/check-domain', async (req, res) => {
 app.use(express.static(__dirname, { index: false }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve index-new.html as the default page
-app.get('/', (req, res) => {
+// Serve index-new.html as the default page (SPA routing for query-param pages)
+app.get(['/', '/claim', '/order-status'], (req, res) => {
     res.sendFile(path.join(__dirname, 'index-new.html'));
 });
 
