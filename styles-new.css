@@ -3605,6 +3605,69 @@ body {
     flex-shrink: 0;
 }
 
+/* Shipping Method Options */
+.billing-shipping-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.shipping-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.03);
+}
+
+[data-theme="light"] .shipping-option {
+    border-color: var(--border-light);
+    background: rgba(0,0,0,0.02);
+}
+
+.shipping-option:hover {
+    border-color: rgba(107,11,34,0.3);
+    background: rgba(107,11,34,0.05);
+}
+
+.shipping-option-selected {
+    border-color: var(--deep-maroon) !important;
+    background: rgba(107,11,34,0.08) !important;
+}
+
+.shipping-option input[type="radio"] {
+    accent-color: var(--deep-maroon);
+    flex-shrink: 0;
+}
+
+.shipping-option-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.shipping-option-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.shipping-option-time {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-top: 0.1rem;
+}
+
+.shipping-option-price {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
 /* Stripe Card Element */
 .billing-card-section {
     margin-top: 1rem;

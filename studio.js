@@ -226,7 +226,7 @@ const restoreSessionPromise = (async function restoreSession() {
     try {
         const result = await api('/api/me');
         if (result.username) {
-            currentUser = { username: result.username, registryId: result.registryId };
+            currentUser = { username: result.username, registryId: result.registryId, email: result.email };
         }
     } catch (e) {
         // Server not running — fall back silently
@@ -412,11 +412,8 @@ let currentCertificate = {
 };
 
 // ===== PRICING =====
-const CERT_PRICES = {
-    Essential: 15,
-    Premium: 30,
-    Elite: 50
-};
+// 10% margin applied to print + shipping + alterations
+const MARGIN_PERCENT = 0.10;
 
 function getDomainPrice(domainName) {
     if (!domainName || domainName === '[domain.com]') return 0;
@@ -577,6 +574,12 @@ function setupPreviewListeners() {
         scrollCb.addEventListener('change', () => {
             if (scrollCb.checked && frameCb) frameCb.checked = false;
         });
+    }
+
+    // Country change → re-fetch Prodigi quote
+    const billingCountry = document.getElementById('billingCountry');
+    if (billingCountry) {
+        billingCountry.addEventListener('change', onBillingCountryChange);
     }
 }
 
@@ -843,7 +846,7 @@ function renderFilteredDomains(filter) {
                 <span class="nc-avail-tag ${available ? 'avail' : 'taken'}">${available ? 'Available' : 'Taken'}</span>
             </div>
             <div class="nc-result-price">
-                <span class="nc-price">$${(domain.price || 0).toFixed(2)}</span>
+                <span class="nc-price">$${Math.round(domain.price || 0)}</span>
                 <span class="nc-price-period">/yr</span>
             </div>
             <div class="nc-result-action">
@@ -1314,15 +1317,44 @@ function printCertificate() {
         return;
     }
     
-    // Populate billing page
-    populateBilling();
+    const btn = document.querySelector('[onclick="printCertificate()"], .btn-primary');
+    const origText = btn?.textContent || '';
+    if (btn) btn.textContent = 'Getting quote…';
     
-    // Navigate to billing panel
-    navigateToPanel('#billing');
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    // Fetch Prodigi quote based on shipping address country
+    const country = document.getElementById('billingCountry')?.value || 'US';
+    const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
     
-    // Initialize Stripe
-    setTimeout(initStripe, 300);
+    fetchProdigiQuotes(country, hasFrame).then(() => {
+        // Populate billing page
+        populateBilling();
+        
+        if (btn) btn.textContent = origText;
+        
+        // Navigate to billing panel
+        navigateToPanel('#billing');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        
+        // Initialize Stripe
+        setTimeout(initStripe, 300);
+    }).catch(() => {
+        // Fallback: proceed without Prodigi quotes
+        prodigiQuotes = [];
+        populateBilling();
+        if (btn) btn.textContent = origText;
+        navigateToPanel('#billing');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        setTimeout(initStripe, 300);
+    });
+}
+
+// Re-fetch Prodigi quote when country changes on billing page
+function onBillingCountryChange() {
+    const country = document.getElementById('billingCountry')?.value;
+    const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
+    if (country) {
+        fetchProdigiQuotes(country, hasFrame).then(() => populateBilling());
+    }
 }
 
 function initStripe() {
@@ -1355,9 +1387,140 @@ function initStripe() {
     });
 }
 
+// ===== PRODIGI PRINT FULFILLMENT =====
+let prodigiQuotes = [];
+let selectedShippingMethod = 'Standard';
+
+async function captureCertImage() {
+    const previewEl = document.getElementById('certCanvasInner');
+    if (!previewEl || typeof html2canvas === 'undefined') return null;
+    try {
+        const canvas = await html2canvas(previewEl, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+        });
+        return canvas.toDataURL('image/png');
+    } catch (e) {
+        console.error('Certificate capture error:', e);
+        return null;
+    }
+}
+
+async function uploadCertImage(dataUrl) {
+    try {
+        const res = await fetch('/api/upload-certificate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageData: dataUrl }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        return data.url;
+    } catch (e) {
+        console.error('Upload error:', e);
+        return null;
+    }
+}
+
+async function fetchProdigiQuotes(destinationCountryCode, hasFrame) {
+    try {
+        const res = await fetch('/api/prodigi-quote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ destinationCountryCode, hasFrame }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        prodigiQuotes = data.quotes || [];
+        return prodigiQuotes;
+    } catch (e) {
+        console.error('Prodigi quote fetch error:', e);
+        prodigiQuotes = [];
+        return [];
+    }
+}
+
+function getProdigiPrintCost() {
+    // Find the selected shipping method quote, or fallback to Standard or first
+    const quote = prodigiQuotes.find(q => q.method === selectedShippingMethod) 
+        || prodigiQuotes.find(q => q.method === 'Standard') 
+        || prodigiQuotes[0];
+    if (!quote) return { itemCost: 0, shippingCost: 0, totalCost: 0 };
+    return {
+        itemCost: quote.itemCost,
+        shippingCost: quote.shippingCost,
+        totalCost: quote.totalCost,
+    };
+}
+
+function renderShippingMethods() {
+    const container = document.getElementById('shippingMethodOptions');
+    if (!container) return;
+    
+    if (!prodigiQuotes || prodigiQuotes.length === 0) {
+        container.innerHTML = '<p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">Enter shipping country above to see delivery options.</p>';
+        return;
+    }
+    
+    // Method label mapping
+    const labels = {
+        'Budget': 'Budget',
+        'Standard': 'Standard',
+        'StandardPlus': 'Standard Plus',
+        'Express': 'Express',
+        'Overnight': 'Overnight',
+    };
+    
+    const timeEstimates = {
+        'Budget': '5–8 business days',
+        'Standard': '3–6 business days',
+        'StandardPlus': '2–5 business days',
+        'Express': '1–3 business days',
+        'Overnight': '1–2 business days',
+    };
+    
+    // Sort: Standard first, then by price
+    const sorted = [...prodigiQuotes].sort((a, b) => {
+        if (a.method === 'Standard') return -1;
+        if (b.method === 'Standard') return 1;
+        return a.shippingCost - b.shippingCost;
+    });
+    
+    let html = '';
+    sorted.forEach((q, i) => {
+        const label = labels[q.method] || q.method;
+        const time = timeEstimates[q.method] || '';
+        const isSelected = q.method === selectedShippingMethod;
+        const carrierInfo = q.carrier && q.carrier !== 'Mixed' ? ` via ${q.carrier}` : '';
+        
+        html += `
+            <label class="shipping-option ${isSelected ? 'shipping-option-selected' : ''}">
+                <input type="radio" name="shippingMethod" value="${q.method}" 
+                    ${isSelected ? 'checked' : ''}
+                    onchange="selectShippingMethod('${q.method}')">
+                <div class="shipping-option-info">
+                    <div class="shipping-option-name">${label}</div>
+                    <div class="shipping-option-time">${time}${carrierInfo}</div>
+                </div>
+                <div class="shipping-option-price">$${Math.round(q.shippingCost * (1 + MARGIN_PERCENT))}</div>
+            </label>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function selectShippingMethod(method) {
+    selectedShippingMethod = method;
+    renderShippingMethods();
+    populateBilling();
+}
+
 function populateBilling() {
     const type = currentCertificate.type;
-    const certPrice = CERT_PRICES[type] || 15;
     const domainPrice = currentCertificate.domainPrice || 0;
     const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
     const hasScroll = document.getElementById('scrollOption')?.checked || false;
@@ -1365,74 +1528,94 @@ function populateBilling() {
     let itemsHtml = '';
     let subtotal = 0;
     
-    const typeLabel = type === 'Elite' ? 'Elite (all add-ons included)' : type === 'Premium' ? 'Premium (alterations included)' : type;
-    itemsHtml += `
-        <div class="billing-item">
-            <div class="billing-item-left">
-                <div class="billing-item-name">${typeLabel} Certificate</div>
-                <div class="billing-item-desc">Digital domain ownership certificate</div>
-            </div>
-            <div class="billing-item-price">$${certPrice.toFixed(2)}</div>
-        </div>`;
-    subtotal += certPrice;
+    // Prodigi Print & Shipping (real quote from Prodigi)
+    const printCost = getProdigiPrintCost();
     
-    if (domainPrice > 0) {
-        itemsHtml += `
-            <div class="billing-item">
-                <div class="billing-item-left">
-                    <div class="billing-item-name">Domain: ${escapeHtml(currentCertificate.domainName)}</div>
-                    <div class="billing-item-desc">Premium domain registration</div>
-                </div>
-                <div class="billing-item-price">$${domainPrice.toFixed(2)}</div>
-            </div>`;
-        subtotal += domainPrice;
-    }
-    
-    // Frame or Scroll
-    if (hasScroll) {
-        itemsHtml += `
-            <div class="billing-item">
-                <div class="billing-item-left">
-                    <div class="billing-item-name">Scroll Delivery</div>
-                    <div class="billing-item-desc">Certificate rolled in protective tube</div>
-                </div>
-                <span class="billing-item-price">FREE</span>
-            </div>`;
-    } else if (hasFrame) {
-        const framePrice = type === 'Elite' ? 0 : 12;
-        itemsHtml += `
-            <div class="billing-item">
-                <div class="billing-item-left">
-                    <div class="billing-item-name">Display Frame</div>
-                    <div class="billing-item-desc">${type === 'Elite' ? 'Included with Elite' : 'Premium wood finish'}</div>
-                </div>
-                <div class="billing-item-price">${type === 'Elite' ? 'FREE' : '$12.00'}</div>
-            </div>`;
-        subtotal += framePrice;
-    }
+    // Tier label
+    const typeLabel = type === 'Elite' ? 'Elite' : type === 'Premium' ? 'Premium' : 'Essential';
+    const tierDescriptions = {
+        'Essential': 'Basic certificate · essential design',
+        'Premium': 'Certificate + frame upgrade included',
+        'Elite': 'Full customization · frame included · gold foil',
+    };
     
     // Custom alterations charge (non-Elite only)
     const hasAlterations = document.getElementById('certificateUpgrade')?.checked || false;
+    let alterationsCost = 0;
     if (hasAlterations && type !== 'Elite') {
+        alterationsCost = 5;
         itemsHtml += `
             <div class="billing-item">
                 <div class="billing-item-left">
                     <div class="billing-item-name">Custom Alterations</div>
                     <div class="billing-item-desc">Personalized certificate customizations</div>
                 </div>
-                <span class="billing-item-price">$5.00</span>
+                <span class="billing-item-price">$${Math.round(alterationsCost * (1 + MARGIN_PERCENT))}</span>
             </div>`;
-        subtotal += 5;
     }
     
-    const shipping = subtotal >= 50 ? 0 : subtotal > 0 ? 9.99 : 0;
-    const shippingLabel = subtotal >= 50 ? 'FREE' : '$9.99';
-    const total = subtotal + (subtotal >= 50 ? 0 : shipping);
+    // Print product
+    if (hasScroll) {
+        const printPrice = printCost.itemCost * (1 + MARGIN_PERCENT);
+        itemsHtml += `
+            <div class="billing-item">
+                <div class="billing-item-left">
+                    <div class="billing-item-name">Fine Art Print (Scroll)</div>
+                    <div class="billing-item-desc">8×10" premium matte · ${typeLabel} tier · protective tube</div>
+                </div>
+                <div class="billing-item-price">$${printPrice.toFixed(2)}</div>
+            </div>`;
+        subtotal += printPrice;
+    } else if (hasFrame) {
+        const printPrice = printCost.itemCost * (1 + MARGIN_PERCENT);
+        itemsHtml += `
+            <div class="billing-item">
+                <div class="billing-item-left">
+                    <div class="billing-item-name">Framed Fine Art Print</div>
+                    <div class="billing-item-desc">8×10" classic black frame · matted · ${typeLabel} tier</div>
+                </div>
+                <div class="billing-item-price">$${Math.round(printPrice)}</div>
+            </div>`;
+        subtotal += printPrice;
+    }
+    
+    // Shipping
+    const methodLabels = { 'Budget': 'Budget', 'Standard': 'Standard', 'StandardPlus': 'Standard Plus', 'Express': 'Express', 'Overnight': 'Overnight' };
+    const shipMethodName = methodLabels[selectedShippingMethod] || selectedShippingMethod || 'Standard';
+    const shippingPrice = printCost.shippingCost * (1 + MARGIN_PERCENT);
+    const shipLabel = shippingPrice > 0 ? `$${Math.round(shippingPrice)}` : '—';
+    itemsHtml += `
+        <div class="billing-item">
+            <div class="billing-item-left">
+                <div class="billing-item-name">Shipping (${shipMethodName})</div>
+                <div class="billing-item-desc">Delivery via premium print network</div>
+            </div>
+            <div class="billing-item-price">${shipLabel}</div>
+        </div>`;
+    subtotal += shippingPrice;
+    
+    // Domain (pass-through, no markup)
+    if (domainPrice > 0) {
+        itemsHtml += `
+            <div class="billing-item">
+                <div class="billing-item-left">
+                    <div class="billing-item-name">Domain: ${escapeHtml(currentCertificate.domainName)}</div>
+                    <div class="billing-item-desc">Domain registration (at cost)</div>
+                </div>
+                <div class="billing-item-price">$${Math.round(domainPrice)}</div>
+            </div>`;
+        subtotal += domainPrice;
+    }
+    
+    const total = subtotal;
     
     document.getElementById('billingOrderItems').innerHTML = itemsHtml;
-    document.getElementById('billingSubtotal').textContent = `$${subtotal.toFixed(2)}`;
-    document.getElementById('billingShipping').textContent = shippingLabel;
-    document.getElementById('billingTotal').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('billingSubtotal').textContent = `$${Math.round(subtotal)}`;
+    document.getElementById('billingShipping').textContent = shipLabel;
+    document.getElementById('billingTotal').textContent = `$${Math.round(total)}`;
+    
+    // Render shipping method options
+    renderShippingMethods();
     
     const recipientName = document.getElementById('recipientName').value || '';
     if (document.getElementById('billingFullName')) {
@@ -1461,21 +1644,42 @@ async function placeOrder() {
     // Disable button
     const btn = document.getElementById('placeOrderBtn');
     btn.disabled = true;
-    btn.textContent = 'Processing...';
+    btn.textContent = 'Preparing order…';
     
     try {
+        // Step 1: Capture certificate as image
+        btn.textContent = 'Generating certificate…';
+        const certDataUrl = await captureCertImage();
+        if (!certDataUrl) {
+            alert('Failed to generate certificate image. Please try again.');
+            btn.disabled = false;
+            btn.textContent = 'Place Order';
+            return;
+        }
+        
+        // Step 2: Upload certificate image to server
+        btn.textContent = 'Uploading certificate…';
+        const certImageUrl = await uploadCertImage(certDataUrl);
+        if (!certImageUrl) {
+            alert('Failed to upload certificate. Please try again.');
+            btn.disabled = false;
+            btn.textContent = 'Place Order';
+            return;
+        }
+        
+        // Step 3: Calculate total and create payment intent
         const totalText = document.getElementById('billingTotal').textContent;
-        const amount = parseFloat(totalText.replace('$', ''));
+        const baseAmount = parseFloat(totalText.replace('$', ''));
         const items = [
-            { name: `${currentCertificate.type} Certificate`, price: CERT_PRICES[currentCertificate.type] || 15 },
+            { name: `${currentCertificate.type} Certificate` },
         ];
         if (currentCertificate.domainPrice > 0) {
             items.push({ name: `Domain: ${currentCertificate.domainName}`, price: currentCertificate.domainPrice });
         }
         
-        // Create payment intent on server
+        btn.textContent = 'Processing payment…';
         const result = await api('/api/create-payment-intent', {
-            amount,
+            amount: baseAmount,
             items,
             shipping: { name, address, city, state, zip, country },
         });
@@ -1486,8 +1690,19 @@ async function placeOrder() {
             btn.textContent = 'Place Order';
             return;
         }
+
+        // Update billing display with tax from Stripe
+        if (result.taxAmount > 0) {
+            const taxRow = document.getElementById('billingTaxRow');
+            const taxEl = document.getElementById('billingTax');
+            if (taxRow) taxRow.style.display = 'flex';
+            if (taxEl) taxEl.textContent = `$${Math.round(result.taxAmount)}`;
+            if (result.totalAmount) {
+                document.getElementById('billingTotal').textContent = `$${Math.round(result.totalAmount)}`;
+            }
+        }
         
-        // Confirm the card payment
+        // Step 4: Confirm the card payment
         const { error, paymentIntent } = await stripe.confirmCardPayment(result.clientSecret, {
             payment_method: {
                 card: stripeCard,
@@ -1513,16 +1728,66 @@ async function placeOrder() {
         }
         
         if (paymentIntent.status === 'succeeded') {
-            alert(`Payment successful!\n\nYour ${currentCertificate.type} certificate will be shipped to:\n${name}\n${address}\n${city}, ${state} ${zip}\n${country}\n\nOrder total: ${totalText}\n\nThank you for your order!`);
+            // Step 5: Create Prodigi print order
+            btn.textContent = 'Placing print order…';
+            
+            const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
+            const printCost = getProdigiPrintCost();
+            const userEmail = currentUser?.email || '';
+            const finalTotalAmount = parseFloat(document.getElementById('billingTotal').textContent.replace('$', ''));
+            
+            const orderResult = await fetch('/api/prodigi-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recipientName: name,
+                    email: userEmail,
+                    address: {
+                        line1: address,
+                        line2: '',
+                        townOrCity: city,
+                        stateOrCounty: state,
+                        postalOrZipCode: zip,
+                        countryCode: country,
+                    },
+                    hasFrame,
+                    shippingMethod: selectedShippingMethod || 'Standard',
+                    certificateImageUrl: certImageUrl,
+                    merchantReference: `DOTDEED-${Date.now()}`,
+                    recipientCost: {
+                        amount: Math.round(finalTotalAmount).toString(),
+                        currency: 'USD',
+                    },
+                    certificateType: currentCertificate.type,
+                    domainName: currentCertificate.domainName,
+                }),
+            });
+            
+            const orderData = await orderResult.json();
+            
+            let successMsg = `Payment successful! 🎉
+
+Your ${currentCertificate.type} certificate is being printed.`;
+            if (orderData.orderId) {
+                successMsg += `\n\n📦 Print order #: ${orderData.orderId}`;
+                successMsg += `\n🔗 Track at: http://localhost:5000/?order=${orderData.orderId}`;
+            }
+            const finalTotal = document.getElementById('billingTotal').textContent;
+            successMsg += `\n\nShipped to:\n${name}\n${address}\n${city}, ${state} ${zip}\n${country}\n\nOrder total: ${finalTotal}\n\nThank you for your order!`;
+            
+            alert(successMsg);
             
             // Reset
             stripeCard.clear();
             navigateToPanel('#storefront');
             updateNavActive('#storefront');
+            btn.disabled = false;
+            btn.textContent = 'Place Order';
         }
         
     } catch (err) {
-        alert('Payment failed. Please try again.');
+        console.error('Order error:', err);
+        alert('Payment succeeded but there was an issue creating the print order. Your payment has been processed. Please contact support with your order details.');
         btn.disabled = false;
         btn.textContent = 'Place Order';
     }
@@ -1608,3 +1873,58 @@ if (!document.querySelector('style[data-notifications]')) {
 }
 
 console.log('✓ Registry studio initialized');
+
+// ===== ORDER STATUS TRACKING =====
+// If page loaded with ?order=XXX query param, show order status
+(async function checkOrderStatusOnLoad() {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('order');
+    if (!orderId) return;
+
+    const statusPanel = document.getElementById('order-status');
+    const content = document.getElementById('orderStatusContent');
+    if (!statusPanel || !content) return;
+
+    // Hide all other panels
+    document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+    statusPanel.style.display = 'block';
+
+    try {
+        const res = await fetch(`/api/order-status?order=${encodeURIComponent(orderId)}`);
+        const data = await res.json();
+        
+        if (data.error) {
+            content.innerHTML = `<p style="color:var(--danger);">Order not found. Please check the order ID.</p>`;
+            return;
+        }
+
+        const statusLabels = {
+            'pending': '⏳ Pending',
+            'submitted': '✅ Submitted',
+            'in_progress': '🖨️ Printing',
+            'completed': '📬 Shipped',
+            'cancelled': '❌ Cancelled',
+        };
+
+        const prodigiStatus = data.prodigiStatus || data.status;
+        const label = statusLabels[prodigiStatus] || prodigiStatus || 'Unknown';
+
+        content.innerHTML = `
+            <div style="background:rgba(107,11,34,0.06);border-radius:12px;padding:1.5rem;border:1px solid rgba(107,11,34,0.1);">
+                <div style="font-size:2rem;margin-bottom:1rem;">${label.split(' ')[0]}</div>
+                <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">${label}</div>
+                <hr style="border:none;border-top:1px solid rgba(107,11,34,0.1);margin:1rem 0;">
+                <div style="font-size:0.85rem;color:var(--text-secondary);">
+                    <p><strong>Order:</strong> ${data.prodigiOrderId}</p>
+                    <p><strong>Certificate:</strong> ${data.certificateType || 'N/A'}</p>
+                    <p><strong>Recipient:</strong> ${data.recipientName || 'N/A'}</p>
+                    <p><strong>Shipping to:</strong> ${data.shippingAddress || 'N/A'}</p>
+                    <p><strong>Ordered:</strong> ${data.createdAt || 'N/A'}</p>
+                    <p><strong>Last updated:</strong> ${data.updatedAt || 'N/A'}</p>
+                </div>
+            </div>
+        `;
+    } catch (e) {
+        content.innerHTML = `<p style="color:var(--danger);">Failed to load order status. Please try again later.</p>`;
+    }
+})();

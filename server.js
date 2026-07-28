@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const { OAuth2Client } = require('google-auth-library');
 const Stripe = require('stripe');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 // ===== SETUP =====
 const app = express();
@@ -48,6 +50,63 @@ db.exec(`
 try { db.exec("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''"); } catch(e) {}
 // Add google_id column if upgrading existing DB
 try { db.exec("ALTER TABLE users ADD COLUMN google_id TEXT"); } catch(e) {}
+
+// Orders table for tracking print fulfillment
+db.exec(`
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prodigi_order_id TEXT,
+        user_email TEXT,
+        recipient_name TEXT NOT NULL,
+        certificate_type TEXT,
+        domain_name TEXT,
+        shipping_address TEXT,
+        shipping_method TEXT,
+        has_frame INTEGER DEFAULT 0,
+        total_paid REAL,
+        status TEXT DEFAULT 'pending',
+        prodigi_status TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+    )
+`);
+
+// ===== EMAIL SETUP =====
+// Configure your SMTP settings here when ready. Falls back to console logging.
+const emailTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.ethereal.email', // Use Ethereal for testing
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    secure: false,
+    auth: {
+        user: process.env.SMTP_USER || '',
+        pass: process.env.SMTP_PASS || '',
+    },
+});
+
+const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@dotdeed.com';
+const SITE_URL = process.env.SITE_URL || 'http://localhost:5000';
+
+async function sendEmail({ to, subject, text, html }) {
+    try {
+        // Try sending via SMTP
+        const info = await emailTransporter.sendMail({
+            from: `"DOT DEED" <${FROM_EMAIL}>`,
+            to,
+            subject,
+            text,
+            html: html || text,
+        });
+        console.log(`✓ Email sent to ${to}: ${subject} (id: ${info.messageId})`);
+        return true;
+    } catch (err) {
+        // If SMTP fails, log to console (useful in dev)
+        console.log(`\n📧 EMAIL to ${to}:`);
+        console.log(`   Subject: ${subject}`);
+        console.log(`   Body: ${text.substring(0, 500)}`);
+        console.log(`   (SMTP not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS env vars)\n`);
+        return false;
+    }
+}
 
 // Helper: generate a unique Registry ID
 function generateRegistryId() {
@@ -141,9 +200,14 @@ app.post('/api/signin', (req, res) => {
 // Get current user (check session on page load)
 app.get('/api/me', (req, res) => {
     if (req.session.userId) {
-        res.json({ username: req.session.username, registryId: req.session.registryId });
+        const user = db.prepare('SELECT username, email, registry_id FROM users WHERE id = ?').get(req.session.userId);
+        if (user) {
+            res.json({ username: user.username, email: user.email, registryId: user.registry_id });
+        } else {
+            res.json({ username: null, email: null, registryId: null });
+        }
     } else {
-        res.json({ username: null, registryId: null });
+        res.json({ username: null, email: null, registryId: null });
     }
 });
 
@@ -227,7 +291,7 @@ app.post('/api/google-signin', async (req, res) => {
     }
 });
 
-// Stripe Payment Intent
+// Stripe Payment Intent (with Stripe Tax support)
 app.post('/api/create-payment-intent', async (req, res) => {
     try {
         const { amount, items, shipping } = req.body;
@@ -236,23 +300,391 @@ app.post('/api/create-payment-intent', async (req, res) => {
             return res.status(400).json({ error: 'Invalid amount' });
         }
 
+        let totalCents = Math.round(amount * 100);
+        let taxAmount = 0;
+
+        // Try Stripe Tax (requires activation in Dashboard → Tax)
+        if (shipping?.country) {
+            try {
+                const taxCalc = await stripe.tax.calculations.create({
+                    currency: 'usd',
+                    customer_details: {
+                        address: {
+                            line1: shipping?.address || 'N/A',
+                            city: shipping?.city || 'N/A',
+                            state: shipping?.state || 'CA',
+                            postal_code: shipping?.zip || '94105',
+                            country: shipping?.country || 'US',
+                        },
+                        address_source: 'shipping',
+                    },
+                    line_items: [{
+                        amount: Math.round(amount * 100),
+                        reference: 'certificate-order',
+                        tax_behavior: 'exclusive',
+                    }],
+                });
+
+                if (taxCalc?.tax_amount_exclusive > 0) {
+                    taxAmount = taxCalc.tax_amount_exclusive / 100;
+                    totalCents += taxCalc.tax_amount_exclusive;
+                }
+            } catch (taxErr) {
+                // Stripe Tax not activated — skip tax
+                console.log('Stripe Tax unavailable:', taxErr.message);
+            }
+        }
+
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(amount * 100), // Stripe uses cents
+            amount: totalCents,
             currency: 'usd',
-            automatic_payment_methods: {
-                enabled: true,
-            },
-            metadata: {
-                items: JSON.stringify(items || []),
-                shipping: JSON.stringify(shipping || {}),
-            },
+            automatic_payment_methods: { enabled: true },
+            shipping: shipping?.name ? {
+                name: shipping.name,
+                address: {
+                    line1: shipping.address || '',
+                    city: shipping.city || '',
+                    state: shipping.state || '',
+                    postal_code: shipping.zip || '',
+                    country: shipping.country || 'US',
+                },
+            } : undefined,
+            metadata: { items: JSON.stringify(items || []) },
         });
 
-        res.json({ clientSecret: paymentIntent.client_secret });
+        res.json({ 
+            clientSecret: paymentIntent.client_secret,
+            amount,
+            taxAmount,
+            totalAmount: amount + taxAmount,
+        });
 
     } catch (err) {
         console.error('Payment intent error:', err);
         res.status(500).json({ error: 'Failed to create payment' });
+    }
+});
+
+// ===== PRODIGI PRINT API =====
+const PRODIGI_API_KEY = '3cf0d3dd-a5c5-43e0-9c8b-a19449d80b79';
+const PRODIGI_BASE = 'https://api.prodigi.com/v4.0';
+const PRODIGI_SKU_FRAMED = 'GLOBAL-CFPM-8X10';
+const PRODIGI_SKU_UNFRAMED = 'GLOBAL-FAP-8X10';
+
+async function prodigiApi(path, options = {}) {
+    const url = `${PRODIGI_BASE}${path}`;
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            'X-API-Key': PRODIGI_API_KEY,
+            'Content-Type': 'application/json',
+            ...options.headers,
+        },
+    });
+    const text = await res.text();
+    if (!res.ok) {
+        throw new Error(`Prodigi API error (${res.status}): ${text.substring(0, 200)}`);
+    }
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        throw new Error('Invalid JSON from Prodigi: ' + text.substring(0, 100));
+    }
+}
+
+// Get Prodigi shipping quote for a certificate
+app.post('/api/prodigi-quote', async (req, res) => {
+    try {
+        const { destinationCountryCode, hasFrame } = req.body;
+        if (!destinationCountryCode) {
+            return res.status(400).json({ error: 'destinationCountryCode required' });
+        }
+
+        const sku = hasFrame ? PRODIGI_SKU_FRAMED : PRODIGI_SKU_UNFRAMED;
+        const attributes = hasFrame ? { color: 'black' } : {};
+
+        const result = await prodigiApi('/Quotes', {
+            method: 'POST',
+            body: JSON.stringify({
+                destinationCountryCode,
+                currencyCode: 'USD',
+                items: [{
+                    sku,
+                    copies: 1,
+                    attributes,
+                    assets: [{ printArea: 'default' }]
+                }]
+            })
+        });
+
+        const quotes = (result.quotes || []).map(q => ({
+            method: q.shipmentMethod,
+            itemCost: parseFloat(q.costSummary.items.amount),
+            shippingCost: parseFloat(q.costSummary.shipping.amount),
+            totalCost: parseFloat(q.costSummary.totalCost.amount),
+            carrier: q.shipments?.[0]?.carrier?.name || 'Unknown',
+            service: q.shipments?.[0]?.carrier?.service || 'Unknown',
+        }));
+
+        res.json({ quotes });
+
+    } catch (err) {
+        console.error('Prodigi quote error:', err);
+        res.status(500).json({ error: 'Failed to get shipping quote' });
+    }
+});
+
+// Upload certificate image (from canvas data URL)
+app.post('/api/upload-certificate', express.json({ limit: '10mb' }), (req, res) => {
+    try {
+        const { imageData } = req.body;
+        if (!imageData) return res.status(400).json({ error: 'No image data' });
+
+        // Decode base64 image
+        const matches = imageData.match(/^data:image\/(png|jpeg);base64,(.+)$/);
+        if (!matches) return res.status(400).json({ error: 'Invalid image format' });
+
+        const ext = matches[1] === 'png' ? 'png' : 'jpg';
+        const buffer = Buffer.from(matches[2], 'base64');
+        const filename = `certificate-${Date.now()}.${ext}`;
+        const filePath = path.join(__dirname, 'uploads', filename);
+
+        // Ensure uploads directory exists
+        const fs = require('fs');
+        if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
+            fs.mkdirSync(path.join(__dirname, 'uploads'));
+        }
+
+        fs.writeFileSync(filePath, buffer);
+
+        const publicUrl = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
+        res.json({ url: publicUrl, filename });
+
+    } catch (err) {
+        console.error('Upload certificate error:', err);
+        res.status(500).json({ error: 'Failed to save certificate image' });
+    }
+});
+
+// Place a Prodigi print order (call AFTER Stripe payment succeeds)
+app.post('/api/prodigi-order', async (req, res) => {
+    try {
+        const { 
+            recipientName, email, phoneNumber,
+            address: { line1, line2, townOrCity, stateOrCounty, postalOrZipCode, countryCode },
+            hasFrame, shippingMethod, certificateImageUrl,
+            merchantReference, recipientCost,
+            certificateType, domainName
+        } = req.body;
+
+        if (!recipientName || !line1 || !townOrCity || !postalOrZipCode || !countryCode || !certificateImageUrl) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const sku = hasFrame ? PRODIGI_SKU_FRAMED : PRODIGI_SKU_UNFRAMED;
+        const attributes = hasFrame ? { color: 'black' } : {};
+
+        const orderPayload = {
+            merchantReference: merchantReference || `DOTDEED-${Date.now()}`,
+            shippingMethod: shippingMethod || 'Standard',
+            recipient: {
+                name: recipientName,
+                email: email || null,
+                phoneNumber: phoneNumber || null,
+                address: {
+                    line1,
+                    line2: line2 || null,
+                    postalOrZipCode,
+                    countryCode,
+                    townOrCity,
+                    stateOrCounty: stateOrCounty || null,
+                }
+            },
+            items: [{
+                merchantReference: 'certificate-1',
+                sku,
+                copies: 1,
+                sizing: 'fillPrintArea',
+                attributes,
+                recipientCost: recipientCost ? {
+                    amount: recipientCost.amount,
+                    currency: recipientCost.currency || 'USD'
+                } : undefined,
+                assets: [{
+                    printArea: 'default',
+                    url: certificateImageUrl,
+                }]
+            }],
+            metadata: {
+                source: 'dotdeed.com',
+                type: 'domain-certificate',
+            }
+        };
+
+        const result = await prodigiApi('/Orders', {
+            method: 'POST',
+            body: JSON.stringify(orderPayload)
+        });
+
+        const orderId = result.order?.id || null;
+        const orderStatus = result.order?.status?.stage || null;
+
+        // Store in database
+        if (orderId) {
+            const stmt = db.prepare(`
+                INSERT INTO orders (prodigi_order_id, user_email, recipient_name, certificate_type, 
+                    domain_name, shipping_address, shipping_method, has_frame, total_paid, status, prodigi_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            stmt.run(
+                orderId,
+                email || null,
+                recipientName,
+                req.body.certificateType || 'Essential',
+                req.body.domainName || null,
+                `${line1}, ${townOrCity}, ${stateOrCounty || ''} ${postalOrZipCode}, ${countryCode}`,
+                shippingMethod || 'Standard',
+                hasFrame ? 1 : 0,
+                recipientCost?.amount ? parseFloat(recipientCost.amount) : 0,
+                'submitted',
+                orderStatus
+            );
+
+            // Send confirmation email
+            const displayName = hasFrame ? 'Framed Print' : 'Fine Art Print (Scroll)';
+            sendEmail({
+                to: email || 'customer@unknown.local',
+                subject: '🎉 Your DOT DEED certificate order is confirmed!',
+                text: `Hi ${recipientName},
+
+Your DOT DEED certificate order has been submitted for printing!
+
+Order #: ${orderId}
+Product: ${displayName}
+Shipping: ${shippingMethod || 'Standard'}
+Shipping to: ${line1}, ${townOrCity}, ${stateOrCounty || ''} ${postalOrZipCode}, ${countryCode}
+
+We'll notify you when it's printing and when it ships.
+
+Track your order: ${SITE_URL}/order-status?order=${orderId}
+
+Thank you for choosing DOT DEED!`,
+            });
+        }
+
+        res.json({
+            outcome: result.outcome,
+            orderId,
+            status: orderStatus,
+            prodigiOrder: result.order || null,
+        });
+
+    } catch (err) {
+        console.error('Prodigi order error:', err);
+        res.status(500).json({ error: 'Failed to create print order: ' + err.message });
+    }
+});
+
+// Prodigi callback/webhook endpoint
+// Configure this URL in your Prodigi Dashboard → Settings → Callback URL
+// URL: http://yourdomain.com/api/prodigi-callback
+app.post('/api/prodigi-callback', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+        const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        
+        // Prodigi sends CloudEvents format
+        const orderId = event.subject || event.data?.order?.id;
+        const eventType = event.type || '';
+        const orderData = event.data?.order || {};
+        
+        if (!orderId) {
+            return res.status(200).json({ received: true }); // Acknowledge anyway
+        }
+
+        // Map event type to human-readable status
+        const statusMap = {
+            'com.prodigi.order.status.stage.changed#InProgress': 'in_progress',
+            'com.prodigi.order.status.stage.changed#Complete': 'completed',
+            'com.prodigi.order.status.stage.changed#Cancelled': 'cancelled',
+        };
+
+        const newStatus = statusMap[eventType] || orderData.status?.stage?.toLowerCase() || null;
+        
+        if (newStatus) {
+            db.prepare('UPDATE orders SET prodigi_status = ?, updated_at = datetime("now") WHERE prodigi_order_id = ?')
+                .run(newStatus, orderId);
+
+            // Look up order to send email notification
+            const order = db.prepare('SELECT * FROM orders WHERE prodigi_order_id = ?').get(orderId);
+            
+            if (order?.user_email) {
+                let subject = '';
+                let text = '';
+
+                if (newStatus === 'in_progress') {
+                    subject = '🖨️ Your DOT DEED certificate is printing!';
+                    text = `Great news! Your DOT DEED certificate (Order #${orderId}) is now in production.
+
+Our print partners are preparing your certificate with care. We'll notify you as soon as it ships.
+
+Estimated delivery depends on your selected shipping method.
+
+Thank you for your patience!`;
+                } else if (newStatus === 'completed') {
+                    subject = '📬 Your DOT DEED certificate is on its way!';
+                    text = `Your DOT DEED certificate (Order #${orderId}) has been printed and shipped!
+
+You'll receive it at:
+${order.shipping_address}
+
+We hope they love their DOT DEED certificate!
+
+Track your order: ${SITE_URL}/order-status?order=${orderId}`;
+                } else if (newStatus === 'cancelled') {
+                    subject = '⚠️ Your DOT DEED order was cancelled';
+                    text = `Your DOT DEED certificate order (Order #${orderId}) has been cancelled.
+
+If you didn't request this cancellation, please contact support.
+
+We apologize for the inconvenience.`;
+                }
+
+                if (subject && text) {
+                    sendEmail({ to: order.user_email, subject, text });
+                }
+            }
+        }
+
+        res.status(200).json({ received: true });
+
+    } catch (err) {
+        console.error('Prodigi callback error:', err);
+        res.status(200).json({ received: true }); // Always acknowledge webhooks
+    }
+});
+
+// Look up order status (for frontend tracking)
+app.get('/api/order-status', (req, res) => {
+    try {
+        const { order } = req.query;
+        if (!order) return res.status(400).json({ error: 'Order ID required' });
+
+        const orderData = db.prepare('SELECT * FROM orders WHERE prodigi_order_id = ?').get(order);
+        if (!orderData) return res.status(404).json({ error: 'Order not found' });
+
+        res.json({
+            prodigiOrderId: orderData.prodigi_order_id,
+            recipientName: orderData.recipient_name,
+            certificateType: orderData.certificate_type,
+            status: orderData.status,
+            prodigiStatus: orderData.prodigi_status,
+            shippingAddress: orderData.shipping_address,
+            createdAt: orderData.created_at,
+            updatedAt: orderData.updated_at,
+        });
+    } catch (err) {
+        console.error('Order status error:', err);
+        res.status(500).json({ error: 'Failed to look up order' });
     }
 });
 
@@ -375,6 +807,7 @@ app.post('/api/check-domain', async (req, res) => {
 // ===== STATIC FILES (after API routes) =====
 // Don't serve index.html automatically — use index-new.html instead
 app.use(express.static(__dirname, { index: false }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve index-new.html as the default page
 app.get('/', (req, res) => {

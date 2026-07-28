@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles-new.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
     <!-- HEADER & NAVIGATION -->
@@ -664,14 +665,14 @@
                         <label class="form-label">Display Option</label>
                         <label class="checkbox-row">
                             <input type="checkbox" id="frameUpgrade" checked>
-                            <span>Wood frame <span class="frame-price-tag">+$12</span></span>
+                            <span>Framed print <span class="frame-price-tag">(see pricing)</span></span>
                         </label>
-                        <span class="form-hint">Premium wood finish frame — ready to hang.</span>
+                        <span class="form-hint">8×10" classic black frame, matted, perspex glazing — ready to hang.</span>
                         <label class="checkbox-row" style="margin-top: 0.4rem;">
                             <input type="checkbox" id="scrollOption">
-                            <span>Scroll delivery <span class="frame-price-tag">Free</span></span>
+                            <span>Scroll / Unframed <span class="frame-price-tag">(see pricing)</span></span>
                         </label>
-                        <span class="form-hint">Rolled certificate in a protective tube. No frame.</span>
+                        <span class="form-hint">Fine art print on 200gsm matte paper, shipped in protective tube.</span>
                     </div>
 
                     <div id="frameOptionsSection" class="form-field hidden">
@@ -1070,6 +1071,12 @@
                 <!-- RIGHT: Order Summary -->
                 <div class="billing-right">
                     <div class="billing-section-card">
+                        <h2 class="billing-section-title">Shipping Method</h2>
+                        <div id="shippingMethodOptions" class="billing-shipping-options">
+                            <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">Select shipping speed after entering your country above.</p>
+                        </div>
+                    </div>
+                    <div class="billing-section-card">
                         <h2 class="billing-section-title">Order Summary</h2>
                         <div id="billingOrderItems" class="billing-items">
                             <!-- Populated by JS -->
@@ -1082,6 +1089,10 @@
                             <div class="billing-total-row">
                                 <span>Shipping</span>
                                 <span id="billingShipping">—</span>
+                            </div>
+                            <div class="billing-total-row" id="billingTaxRow" style="display:none;">
+                                <span>Tax</span>
+                                <span id="billingTax">$0.00</span>
                             </div>
                             <div class="billing-total-row billing-total-row-final">
                                 <span>Total</span>
@@ -1105,6 +1116,17 @@
             </div>
         </section>
     </main>
+
+    <!-- Order Status Panel (hidden, shown via /order-status?order=XXX) -->
+    <section id="order-status" class="panel" style="display:none;">
+        <div class="order-status-container" style="max-width:600px;margin:3rem auto;padding:2rem;">
+            <h2>Order Status</h2>
+            <div id="orderStatusContent">
+                <p>Looking up order...</p>
+            </div>
+            <a href="/" style="display:inline-block;margin-top:1rem;color:var(--deep-maroon);">← Back to DOT DEED</a>
+        </div>
+    </section>
 
     <!-- Footer -->
     <footer class="site-footer">
