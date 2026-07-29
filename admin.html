@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · DOT DEED</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d0d12; color: #e8e8e8; padding: 1rem; }
+h1 { font-size: 1.2rem; margin-bottom: 1rem; color: #6B0B22; }
+h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; color: #D62828; }
+.login-box { max-width: 300px; margin: 4rem auto; text-align: center; }
+.login-box input { width: 100%; padding: 0.6rem; margin: 0.5rem 0; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: #15151d; color: #e8e8e8; font-size: 0.9rem; }
+.login-box button { width: 100%; padding: 0.6rem; border-radius: 6px; border: none; background: #6B0B22; color: #fff; font-size: 0.9rem; cursor: pointer; }
+.login-box .error { color: #D62828; font-size: 0.8rem; margin-top: 0.5rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
+.stat-card { background: #15151d; border-radius: 8px; padding: 0.8rem; text-align: center; border: 1px solid rgba(255,255,255,0.06); }
+.stat-num { font-size: 1.4rem; font-weight: 700; color: #6B0B22; }
+.stat-label { font-size: 0.7rem; color: #8b8b9e; margin-top: 0.2rem; }
+.tabs { display: flex; gap: 0.3rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+.tab { padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #8b8b9e; cursor: pointer; font-size: 0.8rem; }
+.tab.active { background: #6B0B22; color: #fff; border-color: #6B0B22; }
+table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+th, td { padding: 0.4rem 0.5rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); }
+th { color: #8b8b9e; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
+td { color: #e8e8e8; }
+.badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.65rem; font-weight: 600; }
+.badge-green { background: rgba(34,197,94,0.15); color: #22c55e; }
+.badge-red { background: rgba(214,40,40,0.15); color: #D62828; }
+.badge-yellow { background: rgba(234,179,8,0.15); color: #eab308; }
+.badge-blue { background: rgba(59,130,246,0.15); color: #3b82f6; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.logout-btn { padding: 0.3rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #8b8b9e; cursor: pointer; font-size: 0.75rem; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: #e8e8e8; }
+@media (prefers-color-scheme: light) {
+    body { background: #f5f5f7; color: #1a1a2e; }
+    .stat-card, .login-box input { background: #fff; border-color: rgba(0,0,0,0.08); }
+    th { color: #666; }
+    td { color: #1a1a2e; }
+}
+</style>
+</head>
+<body>
+<div id="loginSection" class="login-box">
+    <h1>DOT DEED Admin</h1>
+    <input type="password" id="adminPassword" placeholder="Admin password" onkeydown="if(event.key==='Enter')adminLogin()">
+    <button onclick="adminLogin()">Sign In</button>
+    <div id="loginError" class="error"></div>
+</div>
+
+<div id="adminPanel" style="display:none;">
+    <div class="toolbar">
+        <h1>DOT DEED Admin</h1>
+        <button class="logout-btn" onclick="adminLogout()">Sign Out</button>
+    </div>
+    
+    <div id="statsContainer" class="stats"></div>
+    
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('dashboard')">Dashboard</button>
+        <button class="tab" onclick="switchTab('orders')">Orders</button>
+        <button class="tab" onclick="switchTab('claims')">Claims</button>
+        <button class="tab" onclick="switchTab('domains')">Domains</button>
+        <button class="tab" onclick="switchTab('users')">Users</button>
+    </div>
+    
+    <div id="tabContent"></div>
+</div>
+
+<script>
+let adminAuthed = false;
+
+async function adminLogin() {
+    const pw = document.getElementById('adminPassword').value;
+    const err = document.getElementById('loginError');
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pw }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            adminAuthed = true;
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            loadDashboard();
+        } else {
+            err.textContent = 'Invalid password';
+        }
+    } catch (e) {
+        err.textContent = 'Server error';
+    }
+}
+
+async function adminLogout() {
+    await fetch('/api/admin/logout', { method: 'POST' });
+    adminAuthed = false;
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('adminPanel').style.display = 'none';
+}
+
+async function api(path) {
+    const res = await fetch(path);
+    if (res.status === 401) { adminLogout(); return null; }
+    return res.json();
+}
+
+async function loadDashboard() {
+    const data = await api('/api/admin');
+    if (!data) return;
+    
+    document.getElementById('statsContainer').innerHTML = `
+        <div class="stat-card"><div class="stat-num">${data.stats.orderCount}</div><div class="stat-label">Orders</div></div>
+        <div class="stat-card"><div class="stat-num">${data.stats.claimCount}</div><div class="stat-label">Claims</div></div>
+        <div class="stat-card"><div class="stat-num">${data.stats.userCount}</div><div class="stat-label">Users</div></div>
+        <div class="stat-card"><div class="stat-num">${data.stats.domainCount}</div><div class="stat-label">Domains</div></div>
+        <div class="stat-card"><div class="stat-num">${data.stats.pendingDomains}</div><div class="stat-label">Pending</div></div>
+    `;
+    
+    renderTable('orders', data.recentOrders, ['id', 'recipient_name', 'total_paid', 'status', 'created_at']);
+}
+
+async function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    const content = document.getElementById('tabContent');
+    
+    if (tab === 'dashboard') { loadDashboard(); return; }
+    
+    const data = await api(`/api/admin/${tab}`);
+    if (!data) return;
+    
+    const items = data[tab] || [];
+    if (items.length === 0) {
+        content.innerHTML = '<p style="color:#8b8b9e;font-size:0.85rem;">No records found.</p>';
+        return;
+    }
+    
+    // Filter out long fields for display
+    const skipKeys = ['claim_token', 'prodigi_payload'];
+    const headers = Object.keys(items[0]).filter(k => !skipKeys.includes(k));
+    renderTable(tab, items, headers);
+}
+
+let sortDir = {};
+function renderTable(id, items, headers) {
+    const container = document.getElementById('tabContent');
+    if (!items.length) { container.innerHTML = '<p style="color:#8b8b9e;">No data</p>'; return; }
+    
+    const tableId = 'table-' + id;
+    let html = `<table id="${tableId}"><thead><tr>`;
+    headers.forEach(h => {
+        const label = h.replace(/_/g, ' ');
+        const sorted = sortDir[tableId + h] || '';
+        html += `<th class="sortable" onclick="sortTable('${tableId}','${h}')">${label}${sorted ? (sorted === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
+    });
+    if (id === 'orders') html += '<th style="color:#8b8b9e;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Payload</th>';
+    html += '</tr></thead><tbody>';
+    
+    items.forEach(item => {
+        html += '<tr>';
+        headers.forEach(h => {
+            let val = item[h];
+            if (val === null || val === undefined) val = '—';
+            if (h === 'status' || h === 'prodigi_status') {
+                const cls = val === 'completed' || val === 'purchased' || val === 'claimed' ? 'badge-green' 
+                    : val === 'pending' || val === 'submitted' ? 'badge-yellow'
+                    : val === 'cancelled' ? 'badge-red' : 'badge-blue';
+                val = `<span class="badge ${cls}">${val}</span>`;
+            }
+            if (h === 'total_paid' && typeof val === 'number') val = '$' + val;
+            if (h === 'has_frame') val = val ? 'Yes' : 'No';
+            if (h === 'created_at' || h === 'updated_at' || h === 'claimed_at') {
+                if (val && val.length > 10) val = val.substring(0, 10);
+            }
+            html += `<td>${val}</td>`;
+        });
+        if (id === 'orders') {
+            html += `<td><button class="tab" style="font-size:0.65rem;padding:0.15rem 0.4rem;" onclick="viewPayload(${item.id})">📦 Payload</button></td>`;
+        }
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function viewPayload(id) {
+    const data = await api(`/api/admin/order-payload/${id}`);
+    if (!data || !data.payload) { alert('No payload stored for this order.'); return; }
+    alert(JSON.stringify(data.payload, null, 2));
+}
+
+function sortTable(tableId, key) {
+    const key2 = tableId + key;
+    sortDir[key2] = sortDir[key2] === 'asc' ? 'desc' : 'asc';
+    const dir = sortDir[key2];
+    
+    const table = document.getElementById(tableId);
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const aVal = a.cells[Array.from(table.querySelectorAll('th')).findIndex(th => th.textContent.trim() === key.replace(/_/g, ' ') || th.textContent.trim().startsWith(key.replace(/_/g, ' ')))].textContent.trim();
+        const bVal = b.cells[Array.from(table.querySelectorAll('th')).findIndex(th => th.textContent.trim() === key.replace(/_/g, ' ') || th.textContent.trim().startsWith(key.replace(/_/g, ' ')))].textContent.trim();
+        
+        const aNum = parseFloat(aVal.replace('$', ''));
+        const bNum = parseFloat(bVal.replace('$', ''));
+        if (!isNaN(aNum) && !isNaN(bNum)) return dir === 'asc' ? aNum - bNum : bNum - aNum;
+        return dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    
+    rows.forEach(r => tbody.appendChild(r));
+    // Re-render to update sort indicators
+    switchTab(document.querySelector('.tab.active')?.textContent.toLowerCase() || 'orders');
+}
+</script>
+</body>
+</html>

@@ -9,8 +9,19 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://js.stripe.com/v3/"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Cookie Consent Banner -->
+    <div id="cookieBanner" class="cookie-banner" style="display:none;">
+        <div class="cookie-banner-content">
+            <div class="cookie-banner-text">
+                <strong>🍪 We use cookies</strong>
+                <p>We use a session cookie to keep you signed in. No tracking, no ads, no third-party cookies. <a href="/terms.html#cookies" style="color:var(--crimson);text-decoration:underline;">Learn more</a></p>
+            </div>
+            <button onclick="acceptCookies()" class="cookie-accept-btn">Got it</button>
+        </div>
+    </div>
     <!-- HEADER & NAVIGATION -->
     <header class="header" id="siteHeader">
         <div class="header-container">
@@ -594,9 +605,11 @@
                         <div class="customization-options">
                             <label for="fontStyle">Font style</label>
                             <select id="fontStyle">
+                                <option value="Cormorant Garamond" selected>Cormorant Garamond</option>
                                 <option value="Georgia">Georgia</option>
-                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Playfair Display">Playfair Display</option>
                                 <option value="Garamond">Garamond</option>
+                                <option value="Times New Roman">Times New Roman</option>
                             </select>
                             <label for="primaryColor">Primary color</label>
                             <input type="color" id="primaryColor" value="#6B0B22">
@@ -663,25 +676,30 @@
 
                     <div id="frameUpgradeSection" class="form-field">
                         <label class="form-label">Display Option</label>
-                        <label class="checkbox-row">
-                            <input type="checkbox" id="frameUpgrade" checked>
-                            <span>Framed print <span class="frame-price-tag">(see pricing)</span></span>
-                        </label>
-                        <span class="form-hint">8×10" classic black frame, matted, perspex glazing — ready to hang.</span>
-                        <label class="checkbox-row" style="margin-top: 0.4rem;">
-                            <input type="checkbox" id="scrollOption">
-                            <span>Scroll / Unframed <span class="frame-price-tag">(see pricing)</span></span>
-                        </label>
-                        <span class="form-hint">Fine art print on 200gsm matte paper, shipped in protective tube.</span>
+                        <div style="display:flex;gap:8px;margin-bottom:0.3rem;">
+                            <label class="display-option selected" id="frameLabel" style="flex:1;padding:0.5rem;border:1.5px solid var(--deep-maroon);border-radius:8px;text-align:center;cursor:pointer;font-size:0.78rem;font-weight:600;color:var(--deep-maroon);background:rgba(107,11,34,0.06);">
+                                <input type="radio" name="displayOption" value="frame" checked style="display:none" onchange="switchDisplayOption('frame')">
+                                <span>🖼️ Framed</span>
+                            </label>
+                            <label class="display-option" id="scrollLabel" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.78rem;font-weight:600;color:var(--text-secondary);">
+                                <input type="radio" name="displayOption" value="scroll" style="display:none" onchange="switchDisplayOption('scroll')">
+                                <span>📜 Scroll</span>
+                            </label>
+                        </div>
+                        <span class="form-hint" id="displayHint">8×10" classic frame, matted, perspex glazing — ready to hang.</span>
                     </div>
 
                     <div id="frameOptionsSection" class="form-field hidden">
-                        <label class="form-label">Frame wood type</label>
+                        <label class="form-label">Frame color</label>
                         <select id="frameWoodType">
-                            <option value="walnut">Walnut</option>
-                            <option value="oak">Oak</option>
-                            <option value="mahogany">Mahogany</option>
-                            <option value="ebony">Ebony</option>
+                            <option value="black">Black</option>
+                            <option value="white">White</option>
+                            <option value="brown">Brown</option>
+                            <option value="natural">Natural</option>
+                            <option value="gold">Gold</option>
+                            <option value="silver">Silver</option>
+                            <option value="light grey">Light Grey</option>
+                            <option value="dark grey">Dark Grey</option>
                         </select>
                     </div>
 
@@ -700,6 +718,8 @@
                             <div class="certificate-canvas-inner" id="certCanvasInner">
                                 <!-- Certificate rendered here by JS -->
                             </div>
+                            <!-- Hidden canvas for instant capture -->
+                            <canvas id="certCacheCanvas" style="display:none;"></canvas>
                         </div>
                     </div>
                 </div>
@@ -1065,6 +1085,20 @@
                                 </select>
                             </div>
                         </div>
+                        <div id="domainYearsSection" class="billing-row" style="display:none;">
+                            <div class="billing-field">
+                                <label for="domainYears">Domain Registration</label>
+                                <select id="domainYears" class="billing-input" onchange="onDomainYearsChange()">
+                                    <option value="1">1 year</option>
+                                    <option value="2">2 years</option>
+                                    <option value="3">3 years</option>
+                                    <option value="5">5 years</option>
+                                    <option value="10">10 years</option>
+                                </select>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1158,6 +1192,8 @@
                 <a href="#studio" class="footer-link">Studio</a>
                 <a href="#domain-shopper" class="footer-link">Domains</a>
                 <a href="#vault" class="footer-link">Vault</a>
+                <a href="/terms.html" class="footer-link">Terms & Privacy</a>
+                <a href="/admin" class="footer-link" style="opacity:0.4;">Admin</a>
             </div>
             <div class="footer-copyright">
                 © 2026 DOT DEED. All rights reserved.

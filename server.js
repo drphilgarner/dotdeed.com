@@ -50,6 +50,8 @@ db.exec(`
 try { db.exec("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''"); } catch(e) {}
 // Add google_id column if upgrading existing DB
 try { db.exec("ALTER TABLE users ADD COLUMN google_id TEXT"); } catch(e) {}
+// Add prodigi_payload column if upgrading existing DB
+try { db.exec("ALTER TABLE orders ADD COLUMN prodigi_payload TEXT"); } catch(e) {}
 
 // Orders table for tracking print fulfillment
 db.exec(`
@@ -65,6 +67,7 @@ db.exec(`
         has_frame INTEGER DEFAULT 0,
         total_paid REAL,
         claim_token TEXT,
+        prodigi_payload TEXT,
         status TEXT DEFAULT 'pending',
         prodigi_status TEXT,
         created_at TEXT DEFAULT (datetime('now')),
@@ -84,6 +87,24 @@ db.exec(`
         status TEXT DEFAULT 'pending',
         created_at TEXT DEFAULT (datetime('now')),
         claimed_at TEXT
+    )
+`);
+
+// Purchased domains table
+db.exec(`
+    CREATE TABLE IF NOT EXISTS purchased_domains (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        domain_name TEXT UNIQUE NOT NULL,
+        namecom_domain_id TEXT,
+        purchase_price REAL,
+        purchase_years INTEGER DEFAULT 1,
+        registrant_name TEXT,
+        registrant_email TEXT,
+        epp_code TEXT,
+        status TEXT DEFAULT 'pending',
+        order_id INTEGER,
+        claim_token TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
     )
 `);
 
@@ -389,6 +410,20 @@ const PRODIGI_SKU_UNFRAMED = 'GLOBAL-FAP-8X10';
 
 async function prodigiApi(path, options = {}) {
     const url = `${PRODIGI_BASE}${path}`;
+    
+    // Log Prodigi requests to console for debugging
+    if (options.body) {
+        try {
+            const parsed = JSON.parse(options.body);
+            console.log(`\n📤 Prodigi ${options.method || 'GET'} ${path}`);
+            console.log(`   SKU: ${parsed.items?.[0]?.sku || 'N/A'}`);
+            console.log(`   Recipient: ${parsed.recipient?.name || 'N/A'}`);
+            console.log(`   Address: ${parsed.recipient?.address?.line1 || 'N/A'}, ${parsed.recipient?.address?.townOrCity || 'N/A'}`);
+            console.log(`   Image URL: ${parsed.items?.[0]?.assets?.[0]?.url?.substring(0, 80) || 'N/A'}...`);
+            console.log(`   Attributes: ${JSON.stringify(parsed.items?.[0]?.attributes || {})}`);
+        } catch (e) {}
+    }
+    
     const res = await fetch(url, {
         ...options,
         headers: {
@@ -488,7 +523,7 @@ app.post('/api/prodigi-order', async (req, res) => {
         const { 
             recipientName, email, phoneNumber,
             address: { line1, line2, townOrCity, stateOrCounty, postalOrZipCode, countryCode },
-            hasFrame, shippingMethod, certificateImageUrl,
+            hasFrame, frameColor, shippingMethod, certificateImageUrl,
             merchantReference, recipientCost,
             certificateType, domainName
         } = req.body;
@@ -498,7 +533,7 @@ app.post('/api/prodigi-order', async (req, res) => {
         }
 
         const sku = hasFrame ? PRODIGI_SKU_FRAMED : PRODIGI_SKU_UNFRAMED;
-        const attributes = hasFrame ? { color: 'black' } : {};
+        const attributes = hasFrame ? { color: frameColor || 'black' } : {};
 
         const orderPayload = {
             merchantReference: merchantReference || `DOTDEED-${Date.now()}`,
@@ -547,10 +582,11 @@ app.post('/api/prodigi-order', async (req, res) => {
 
         // Store in database
         if (orderId) {
+            const payloadStr = JSON.stringify(orderPayload);
             const stmt = db.prepare(`
                 INSERT INTO orders (prodigi_order_id, user_email, recipient_name, certificate_type, 
-                    domain_name, shipping_address, shipping_method, has_frame, total_paid, status, prodigi_status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    domain_name, shipping_address, shipping_method, has_frame, total_paid, prodigi_payload, status, prodigi_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             stmt.run(
                 orderId,
@@ -562,6 +598,7 @@ app.post('/api/prodigi-order', async (req, res) => {
                 shippingMethod || 'Standard',
                 hasFrame ? 1 : 0,
                 recipientCost?.amount ? parseFloat(recipientCost.amount) : 0,
+                payloadStr,
                 'submitted',
                 orderStatus
             );
@@ -746,8 +783,8 @@ app.get('/api/claim/:token', (req, res) => {
     }
 });
 
-// Claim a domain (recipient activates it)
-app.post('/api/claim/:token', (req, res) => {
+// Claim a domain (recipient activates it + triggers transfer)
+app.post('/api/claim/:token', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email || !email.includes('@')) {
@@ -764,12 +801,28 @@ app.post('/api/claim/:token', (req, res) => {
             WHERE claim_token = ?
         `).run(email, req.params.token);
 
+        // Trigger domain transfer (send EPP code to recipient)
+        let transferMsg = '';
+        try {
+            const transferRes = await fetch(`${SITE_URL}/api/transfer-domain`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ claimToken: req.params.token, recipientEmail: email }),
+            });
+            const transferData = await transferRes.json();
+            if (transferData.success) {
+                transferMsg = '\n\nCheck your email for transfer instructions.';
+            }
+        } catch (transferErr) {
+            console.log('Transfer trigger failed (manual setup needed):', transferErr.message);
+        }
+
         // Send confirmation to buyer
         if (claim.buyer_email) {
             sendEmail({
                 to: claim.buyer_email,
                 subject: `🎁 ${claim.domain_name} has been claimed!`,
-                text: `Great news! The recipient has claimed ${claim.domain_name}!\n\nThey'll be able to manage their domain through their account.`,
+                text: `Great news! The recipient has claimed ${claim.domain_name}!${transferMsg}\n\nThank you for using DOT DEED!`,
             });
         }
 
@@ -777,10 +830,10 @@ app.post('/api/claim/:token', (req, res) => {
         sendEmail({
             to: email,
             subject: `🎉 You've received ${claim.domain_name}!`,
-            text: `Congratulations!\n\n${claim.buyer_name || 'Someone'} has gifted you the domain ${claim.domain_name}!\n\nSign in to your DOT DEED account to manage your domain.\n\n${SITE_URL}/claim?token=${claim.claim_token}`,
+            text: `Congratulations!\n\n${claim.buyer_name || 'Someone'} has gifted you the domain ${claim.domain_name}!${transferMsg}\n\n${SITE_URL}/claim?token=${claim.claim_token}`,
         });
 
-        res.json({ message: 'Domain claimed successfully!', domainName: claim.domain_name });
+        res.json({ message: 'Domain claimed successfully!' + transferMsg, domainName: claim.domain_name });
     } catch (err) {
         console.error('Claim error:', err);
         res.status(500).json({ error: 'Failed to claim domain' });
@@ -788,10 +841,10 @@ app.post('/api/claim/:token', (req, res) => {
 });
 
 // ===== NAME.COM API =====
-const NAMECOM_USER = 'strixxtheCEO-test';
-const NAMECOM_TOKEN = 'dc77f73b4dcaab29cf43efc27338a7ad154f2da6';
+const NAMECOM_USER = 'strixxtheCEO';
+const NAMECOM_TOKEN = 'e91ae7f7d17593ac5028109ad564e258b8752689';
 const NAMECOM_AUTH = 'Basic ' + Buffer.from(NAMECOM_USER + ':' + NAMECOM_TOKEN).toString('base64');
-const NAMECOM_API = 'https://api.dev.name.com/v4';
+const NAMECOM_API = 'https://api.name.com/v4';
 
 async function nameComApi(path, options = {}) {
     const url = `${NAMECOM_API}${path}`;
@@ -816,7 +869,212 @@ async function nameComApi(path, options = {}) {
     }
 }
 
-// Search domains on Name.com
+// ===== DOMAIN PURCHASE + TRANSFER (relies on nameComApi above) =====
+// Get a domain price (uses search endpoint)
+app.post('/api/domain-price', async (req, res) => {
+    try {
+        const { domain } = req.body;
+        if (!domain) return res.status(400).json({ error: 'Domain required' });
+
+        const body = JSON.stringify({
+            keyword: domain.split('.')[0],
+            tldFilter: ['.' + domain.split('.').pop()],
+            pageSize: 5
+        });
+        const data = await nameComApi('/domains:search', { method: 'POST', body });
+        const match = (data.results || []).find(d => d.domainName === domain);
+        
+        res.json({
+            domain,
+            price: match?.purchasePrice || 0,
+            available: match?.purchasable === true,
+        });
+    } catch (err) {
+        console.error('Domain price error:', err);
+        res.status(500).json({ error: 'Failed to get domain price' });
+    }
+});
+
+// Purchase a domain via Name.com API
+app.post('/api/purchase-domain', async (req, res) => {
+    try {
+        const { domain, years, registrantName, registrantEmail, registrantPhone, 
+                addressLine1, addressCity, addressState, addressZip, addressCountry,
+                claimToken } = req.body;
+
+        if (!domain) return res.status(400).json({ error: 'Domain name required' });
+        if (!registrantName || !registrantEmail) 
+            return res.status(400).json({ error: 'Registrant contact info required' });
+
+        // Get purchase price first
+        let purchasePrice = 0;
+        try {
+            const priceRes = await fetch(`${SITE_URL}/api/domain-price`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domain }),
+            });
+            const priceData = await priceRes.json();
+            purchasePrice = priceData.price || 0;
+        } catch (e) {
+            console.log('Price check unavailable, proceeding with purchase attempt');
+        }
+
+        // Attempt to purchase via Name.com API
+        let purchaseSuccess = false;
+        let domainId = null;
+        let purchaseError = null;
+
+        if (purchasePrice > 0) {
+            try {
+                const nameParts = registrantName.trim().split(' ');
+                const firstName = nameParts[0] || registrantName;
+                const lastName = nameParts.slice(1).join(' ') || 'Gift Recipient';
+
+                const purchaseBody = JSON.stringify({
+                    domain: {
+                        domainName: domain,
+                        purchaseYears: years || 1,
+                        contacts: [{
+                            type: 'registrant',
+                            firstName,
+                            lastName,
+                            email: registrantEmail,
+                            phone: registrantPhone || '+1.5551234567',
+                            address: {
+                                line1: addressLine1 || '123 Default St',
+                                city: addressCity || 'Anytown',
+                                state: addressState || 'CA',
+                                zip: addressZip || '12345',
+                                country: addressCountry || 'US',
+                            },
+                        }],
+                        adminContact: 'same',
+                        techContact: 'same',
+                        billingContact: 'same',
+                    },
+                });
+
+                const result = await nameComApi('/domains', { method: 'POST', body: purchaseBody });
+                domainId = result?.domain?.id || null;
+                purchaseSuccess = true;
+            } catch (e) {
+                purchaseError = e.message;
+                console.log('Name.com purchase failed:', e.message);
+            }
+        }
+
+        // Store in purchased_domains table regardless
+        db.prepare(`
+            INSERT INTO purchased_domains 
+                (domain_name, namecom_domain_id, purchase_price, purchase_years, 
+                 registrant_name, registrant_email, status, claim_token)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            domain, domainId, purchasePrice, years || 1,
+            registrantName, registrantEmail,
+            purchaseSuccess ? 'purchased' : 'pending',
+            claimToken || null
+        );
+
+        if (purchaseSuccess) {
+            res.json({
+                success: true,
+                domain,
+                domainId,
+                price: purchasePrice,
+                message: `${domain} registered successfully!`,
+            });
+        } else {
+            res.json({
+                success: true,
+                domain,
+                pending: true,
+                price: purchasePrice,
+                message: purchasePrice > 0 
+                    ? `${domain} queued — we'll complete registration shortly.`
+                    : `${domain} queued for registration. We'll register it once payment is confirmed.`,
+            });
+        }
+
+    } catch (err) {
+        console.error('Domain purchase error:', err);
+        res.status(500).json({ error: 'Failed to process domain purchase' });
+    }
+});
+
+// Transfer domain to recipient (called when claim is made)
+app.post('/api/transfer-domain', async (req, res) => {
+    try {
+        const { claimToken, recipientEmail } = req.body;
+        if (!claimToken) return res.status(400).json({ error: 'Claim token required' });
+
+        const purchase = db.prepare('SELECT * FROM purchased_domains WHERE claim_token = ?').get(claimToken);
+        if (!purchase) return res.status(400).json({ error: 'No domain found for this claim' });
+
+        const domain = purchase.domain_name;
+
+        // Get or generate EPP code from Name.com
+        let eppCode = purchase.epp_code;
+        if (!eppCode) {
+            try {
+                const eppResult = await nameComApi(`/domains/${domain}`, { method: 'GET' });
+                eppCode = eppResult?.domain?.authCode || 'CONTACT-SUPPORT-FOR-EPP';
+            } catch (e) {
+                eppCode = 'CONTACT-SUPPORT-FOR-EPP';
+            }
+            db.prepare('UPDATE purchased_domains SET epp_code = ? WHERE domain_name = ?')
+                .run(eppCode, domain);
+        }
+
+        // Mark as transferred
+        db.prepare(`
+            UPDATE purchased_domains SET status = 'transferred' WHERE domain_name = ?
+        `).run(domain);
+
+        // Send transfer instructions to recipient
+        sendEmail({
+            to: recipientEmail,
+            subject: `📋 How to claim your domain: ${domain}`,
+            text: `You've been gifted the domain ${domain}!
+
+Here's how to take ownership:
+
+1. Choose a registrar (Namecheap, GoDaddy, Google Domains, Cloudflare, etc.)
+2. Go to their domain transfer page
+3. Enter the domain name: ${domain}
+4. Use this authorization (EPP) code: ${eppCode}
+5. Pay the transfer fee (usually ~$8-12 for a .com, includes a year renewal)
+6. The domain will transfer within 5-7 days
+
+Need help? Reply to this email or visit ${SITE_URL}/help
+
+Enjoy your new domain! 🎉`,
+        });
+
+        // Notify buyer
+        const claim = db.prepare('SELECT buyer_email FROM claims WHERE claim_token = ?').get(claimToken);
+        if (claim?.buyer_email) {
+            sendEmail({
+                to: claim.buyer_email,
+                subject: `🔑 Transfer instructions sent for ${domain}`,
+                text: `Your gifted domain ${domain} has been claimed!\n\nThe recipient has been sent the transfer authorization code.\n\nThey'll need to initiate a transfer at their chosen registrar using the EPP code.`,
+            });
+        }
+
+        res.json({
+            success: true,
+            domain,
+            message: 'Transfer instructions sent to recipient!',
+        });
+
+    } catch (err) {
+        console.error('Domain transfer error:', err);
+        res.status(500).json({ error: 'Failed to process domain transfer' });
+    }
+});
+
+// ===== DOMAIN SEARCH (used by frontend domain shopper) =====
 app.get('/api/search-domains', async (req, res) => {
     try {
         const { keyword, tld, limit } = req.query;
@@ -825,7 +1083,6 @@ app.get('/api/search-domains', async (req, res) => {
 
         let results = [];
         
-        // Try the search endpoint
         try {
             const body = JSON.stringify({
                 keyword: searchTerm,
@@ -838,30 +1095,13 @@ app.get('/api/search-domains', async (req, res) => {
             });
             results = (searchResults.results || []).map(d => ({
                 name: d.domainName,
-                price: d.purchasePrice || d.renewalPrice || Math.floor(Math.random() * 150) + 10,
-                available: d.purchasable !== false,
+                price: d.purchasePrice || d.renewalPrice || 0,
+                available: d.purchasable === true,
+                premium: d.premium === true,
                 tld: '.' + d.domainName.split('.').pop(),
             }));
         } catch (e) {
             console.error('Search error:', e.message);
-        }
-
-        // If no results from search, return some suggested domains
-        if (results.length === 0 && searchTerm) {
-            const tlds = tld ? [tld] : ['.com', '.io', '.dev', '.app', '.co', '.ai', '.tech', '.design', '.life', '.xyz'];
-            for (const ext of tlds.slice(0, 5)) {
-                try {
-                    const check = await nameComApi('/domains?domainName=' + encodeURIComponent(searchTerm + ext));
-                    if (check && check.domainName) {
-                        results.push({
-                            name: check.domainName,
-                            price: check.purchasePrice || 0,
-                            available: check.purchasable !== false,
-                            tld: ext,
-                        });
-                    }
-                } catch (e) { /* skip */ }
-            }
         }
 
         res.json({ domains: results });
@@ -871,7 +1111,6 @@ app.get('/api/search-domains', async (req, res) => {
     }
 });
 
-// Check a single domain
 app.post('/api/check-domain', async (req, res) => {
     try {
         const { domain } = req.body;
@@ -892,7 +1131,8 @@ app.post('/api/check-domain', async (req, res) => {
             res.json({
                 name: match.domainName,
                 price: match.purchasePrice || match.renewalPrice || 0,
-                available: match.purchasable !== false,
+                available: match.purchasable === true,
+                premium: match.premium === true,
             });
         } else {
             res.json({ name: domain, price: 0, available: false });
@@ -901,6 +1141,97 @@ app.post('/api/check-domain', async (req, res) => {
         console.error('Name.com check error:', err);
         res.json({ error: 'Domain check failed' });
     }
+});
+
+// ===== ADMIN PANEL =====
+const ADMIN_PASSWORD = 'dotdeed2026'; // Change this in production
+
+app.post('/api/admin/login', express.json(), (req, res) => {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+        req.session.isAdmin = true;
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ error: 'Invalid password' });
+    }
+});
+
+app.post('/api/admin/logout', (req, res) => {
+    req.session.isAdmin = false;
+    res.json({ success: true });
+});
+
+function requireAdmin(req, res, next) {
+    if (req.session.isAdmin) return next();
+    res.status(401).json({ error: 'Unauthorized' });
+}
+
+app.get('/api/admin/orders', requireAdmin, (req, res) => {
+    const orders = db.prepare(`
+        SELECT id, prodigi_order_id, user_email, recipient_name, certificate_type, 
+               domain_name, shipping_method, has_frame, total_paid, status, prodigi_status,
+               created_at, updated_at
+        FROM orders ORDER BY created_at DESC LIMIT 100
+    `).all();
+    res.json({ orders });
+});
+
+app.get('/api/admin/order-payload/:id', requireAdmin, (req, res) => {
+    const order = db.prepare('SELECT prodigi_payload FROM orders WHERE id = ?').get(req.params.id);
+    if (!order || !order.prodigi_payload) return res.json({ payload: null });
+    try {
+        res.json({ payload: JSON.parse(order.prodigi_payload) });
+    } catch (e) {
+        res.json({ payload: order.prodigi_payload });
+    }
+});
+
+app.get('/api/admin/claims', requireAdmin, (req, res) => {
+    const claims = db.prepare(`
+        SELECT id, domain_name, claim_token, buyer_name, buyer_email, recipient_email, status, created_at, claimed_at
+        FROM claims ORDER BY created_at DESC LIMIT 100
+    `).all();
+    res.json({ claims });
+});
+
+app.get('/api/admin/domains', requireAdmin, (req, res) => {
+    const domains = db.prepare(`
+        SELECT id, domain_name, namecom_domain_id, purchase_price, purchase_years,
+               registrant_name, registrant_email, status, claim_token, created_at
+        FROM purchased_domains ORDER BY created_at DESC LIMIT 100
+    `).all();
+    res.json({ domains });
+});
+
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+    const users = db.prepare(`
+        SELECT id, username, email, registry_id, created_at FROM users ORDER BY created_at DESC LIMIT 100
+    `).all();
+    res.json({ users });
+});
+
+app.get('/api/admin', requireAdmin, async (req, res) => {
+    const orderCount = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
+    const claimCount = db.prepare('SELECT COUNT(*) as count FROM claims').get().count;
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+    const domainCount = db.prepare('SELECT COUNT(*) as count FROM purchased_domains').get().count;
+    const pendingDomains = db.prepare("SELECT COUNT(*) as count FROM purchased_domains WHERE status='pending'").get().count;
+
+    // Recent orders
+    const recentOrders = db.prepare(`
+        SELECT id, prodigi_order_id, recipient_name, total_paid, status, created_at 
+        FROM orders ORDER BY created_at DESC LIMIT 10
+    `).all();
+
+    res.json({
+        stats: { orderCount, claimCount, userCount, domainCount, pendingDomains },
+        recentOrders,
+    });
+});
+
+// Serve admin.html
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 // ===== STATIC FILES (after API routes) =====

@@ -409,10 +409,10 @@ let currentCertificate = {
     issueDate: new Date().toISOString().split('T')[0],
     customizationEnabled: false,
     customizationNotes: '',
+    domainYears: 1,
     claimToken: null,
     claimUrl: null,
 };
-
 // ===== PRICING =====
 // 10% margin applied to print + shipping + alterations
 const MARGIN_PERCENT = 0.10;
@@ -440,16 +440,14 @@ async function searchDomainsApi(query) {
         if (data.domains && data.domains.length > 0) {
             liveDomainResults = data.domains.map(d => ({
                 name: d.name,
-                price: d.price > 0 ? d.price : Math.floor(Math.random() * 150) + 10,
-                description: d.available ? 'Available for registration' : 'Check availability',
-                available: d.available !== false,
-                premium: d.premium || d.price >= 200,
+                price: d.price > 0 ? d.price : 0,
+                description: d.available ? 'Available for registration' : 'Taken',
+                available: d.available === true,
+                premium: d.premium === true || d.price >= 200,
                 tld: d.tld || '.' + d.name.split('.').pop(),
             }));
         }
-    } catch (e) {
-        // API unavailable — fallback to catalog below
-    }
+    } catch (e) {}
 }
 
 // ===== DARK MODE =====
@@ -525,14 +523,17 @@ function navigateToPanel(panelId) {
 
 // ===== DEBOUNCED PREVIEW LISTENERS =====
 function setupPreviewListeners() {
-    const debouncedPreview = debounce(updatePreview);
+    const debouncedPreview = debounce(() => {
+        updatePreview();
+        queueBackgroundRender();
+    });
     
     const previewInputs = [
         'recipientName', 'domainName', 'issueDate', 'certificateUpgrade',
         'upgradeNotes', 'fontStyle', 'primaryColor', 'secondaryColor',
         'borderStyle', 'sealStyle', 'paperTexture', 'awardTitle',
         'cornerOrnamentStyle', 'filigreePattern', 'goldFoilAccent',
-        'frameUpgrade', 'frameWoodType', 'scrollOption'
+        'frameUpgrade', 'frameWoodType', 'scrollOption', 'displayOption'
     ];
 
     previewInputs.forEach(id => {
@@ -540,6 +541,8 @@ function setupPreviewListeners() {
         if (!el) return;
         const eventType = el.type === 'text' || el.tagName === 'TEXTAREA' || el.type === 'date'
             ? 'input' : 'change';
+        // Radio buttons need 'change' event, but we handle displayOption via click
+        if (id === 'displayOption') return;
         el.addEventListener(eventType, debouncedPreview);
     });
 
@@ -564,19 +567,29 @@ function setupPreviewListeners() {
         });
     });
 
-    // Mutual exclusion: frame ⇄ scroll
-    const frameCb = document.getElementById('frameUpgrade');
-    const scrollCb = document.getElementById('scrollOption');
-    if (frameCb) {
-        frameCb.addEventListener('change', () => {
-            if (frameCb.checked && scrollCb) scrollCb.checked = false;
+    // Display option: frame vs scroll (radio buttons)
+    function switchDisplayOption(option) {
+        document.querySelectorAll('.display-option').forEach(el => {
+            el.style.borderColor = 'var(--border-light)';
+            el.style.background = 'var(--bg-primary)';
+            el.style.color = 'var(--text-secondary)';
         });
+        const label = document.getElementById(option + 'Label');
+        if (label) {
+            label.style.borderColor = 'var(--deep-maroon)';
+            label.style.background = 'rgba(107,11,34,0.06)';
+            label.style.color = 'var(--deep-maroon)';
+        }
+        const hint = document.getElementById('displayHint');
+        if (hint) {
+            hint.textContent = option === 'frame' 
+                ? '8\u00d710" classic frame, matted, perspex glazing \u2014 ready to hang.'
+                : 'Fine art print on 200gsm matte paper, shipped in protective tube.';
+        }
+        updatePreview();
+        queueBackgroundRender();
     }
-    if (scrollCb) {
-        scrollCb.addEventListener('change', () => {
-            if (scrollCb.checked && frameCb) frameCb.checked = false;
-        });
-    }
+    window.switchDisplayOption = switchDisplayOption;
 
     // Country change → re-fetch Prodigi quote
     const billingCountry = document.getElementById('billingCountry');
@@ -612,10 +625,11 @@ function openStudio(cardElement, type) {
     document.getElementById('issueDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('certificateUpgrade').checked = false;
     document.getElementById('upgradeNotes').value = '';
-    document.getElementById('frameUpgrade').checked = true;
-    document.getElementById('frameWoodType').value = 'walnut';
-    const scrollOpt = document.getElementById('scrollOption');
-    if (scrollOpt) scrollOpt.checked = false;
+    document.getElementById('frameWoodType').value = 'black';
+    // Set display option based on tier
+    const defaultDisplay = currentCertificate.type === 'Essential' ? 'scroll' : 'frame';
+    const radio = document.querySelector(`input[name="displayOption"][value="${defaultDisplay}"]`);
+    if (radio) { radio.checked = true; switchDisplayOption(defaultDisplay); }
     document.getElementById('sealStyle').value = 'classic';
     document.getElementById('paperTexture').value = 'smooth';
     document.getElementById('awardTitle').value = '';
@@ -644,6 +658,7 @@ function openStudio(cardElement, type) {
     
     // Trigger initial preview
     updatePreview();
+    queueBackgroundRender();
 }
 
 function closeStudio() {
@@ -673,10 +688,10 @@ function changeTier(tier) {
     document.getElementById('certificateUpgrade').checked = false;
     document.getElementById('upgradeNotesSection').classList.add('hidden');
     
-    // Reset frame to default (checked)
-    document.getElementById('frameUpgrade').checked = true;
-    const scrollOpt = document.getElementById('scrollOption');
-    if (scrollOpt) scrollOpt.checked = false;
+    // Reset to Framed (or Scroll for Essential)
+    const defaultDisplay = currentCertificate.type === 'Essential' ? 'scroll' : 'frame';
+    const radio = document.querySelector(`input[name="displayOption"][value="${defaultDisplay}"]`);
+    if (radio) { radio.checked = true; switchDisplayOption(defaultDisplay); }
     
     
     updatePreview();
@@ -709,9 +724,32 @@ function setGiftMode(isGift) {
 }
 
 function renderDomainShopper() {
-    renderFilteredDomains('');
+    // Empty initial state — user must search
+    showEmptyState();
+    const countEl = document.getElementById('domainResultCount');
+    if (countEl) countEl.textContent = '0';
 }
 
+function showEmptyState() {
+    const container = document.getElementById('domainShopperGrid');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="nc-empty-state">
+            <div class="nc-empty-state-icon" style="font-size:2.5rem;">🔍</div>
+            <h3>Search for a domain</h3>
+            <p>Type a name above to see available domains across all TLDs.</p>
+            <div class="nc-popular-tlds" style="justify-content:center;margin-top:1rem;gap:0.5rem;">
+                <span style="font-size:0.8rem;color:var(--text-secondary);">Popular:</span>
+                <span style="padding:0.2rem 0.5rem;border:1px solid rgba(107,11,34,0.2);border-radius:4px;font-size:0.75rem;color:var(--deep-maroon);">.com</span>
+                <span style="padding:0.2rem 0.5rem;border:1px solid rgba(107,11,34,0.2);border-radius:4px;font-size:0.75rem;color:var(--deep-maroon);">.io</span>
+                <span style="padding:0.2rem 0.5rem;border:1px solid rgba(107,11,34,0.2);border-radius:4px;font-size:0.75rem;color:var(--deep-maroon);">.dev</span>
+                <span style="padding:0.2rem 0.5rem;border:1px solid rgba(107,11,34,0.2);border-radius:4px;font-size:0.75rem;color:var(--deep-maroon);">.app</span>
+                <span style="padding:0.2rem 0.5rem;border:1px solid rgba(107,11,34,0.2);border-radius:4px;font-size:0.75rem;color:var(--deep-maroon);">.ai</span>
+            </div>
+        </div>`;
+}
+
+let searchPerformed = false;
 let activeTldFilter = 'all';
 let activePriceRange = 'all';
 let activeSort = 'default';
@@ -722,8 +760,10 @@ function filterByTLD(tld) {
     document.querySelectorAll('.tld-filter').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tld === tld);
     });
-    const input = document.getElementById('domainSearchInput');
-    renderFilteredDomains(input.value);
+    if (searchPerformed) {
+        const input = document.getElementById('domainSearchInput');
+        renderFilteredDomains(input.value);
+    }
 }
 
 function filterByPriceRange(range) {
@@ -731,20 +771,26 @@ function filterByPriceRange(range) {
     document.querySelectorAll('.price-filter').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.range === range);
     });
-    const input = document.getElementById('domainSearchInput');
-    renderFilteredDomains(input.value);
+    if (searchPerformed) {
+        const input = document.getElementById('domainSearchInput');
+        renderFilteredDomains(input.value);
+    }
 }
 
 function applySort() {
     activeSort = document.getElementById('sortSelect').value;
-    const input = document.getElementById('domainSearchInput');
-    renderFilteredDomains(input.value);
+    if (searchPerformed) {
+        const input = document.getElementById('domainSearchInput');
+        renderFilteredDomains(input.value);
+    }
 }
 
 function toggleAvailableOnly() {
     availableOnly = document.getElementById('availableOnly').checked;
-    const input = document.getElementById('domainSearchInput');
-    renderFilteredDomains(input.value);
+    if (searchPerformed) {
+        const input = document.getElementById('domainSearchInput');
+        renderFilteredDomains(input.value);
+    }
 }
 
 function renderFilteredDomains(filter) {
@@ -754,11 +800,8 @@ function renderFilteredDomains(filter) {
     const query = (filter || '').toLowerCase().trim();
     const tldFilter = activeTldFilter === 'all' ? null : activeTldFilter;
 
-    // Use live API results if available and a search query exists
-    let source = domainShopperCatalog;
-    if (query && liveDomainResults.length > 0) {
-        source = liveDomainResults;
-    }
+    // Use live API results
+    let source = liveDomainResults.length > 0 ? liveDomainResults : domainShopperCatalog;
 
     let filtered = source.filter(d => {
         const domainTld = '.' + d.name.split('.').pop();
@@ -821,7 +864,12 @@ function renderFilteredDomains(filter) {
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = `
+        container.innerHTML = query ? `
+            <div class="nc-empty-state">
+                <div class="nc-empty-state-icon">😕</div>
+                <h3>${escapeHtml(query)} is not available</h3>
+                <p>We couldn't find any available domains matching "${escapeHtml(query)}". Try a different spelling or keyword.</p>
+            </div>` : `
             <div class="nc-empty-state">
                 <div class="nc-empty-state-icon">🔍</div>
                 <h3>No domains found</h3>
@@ -848,13 +896,12 @@ function renderFilteredDomains(filter) {
                 <span class="nc-avail-tag ${available ? 'avail' : 'taken'}">${available ? 'Available' : 'Taken'}</span>
             </div>
             <div class="nc-result-price">
-                <span class="nc-price">$${Math.round(domain.price || 0)}</span>
-                <span class="nc-price-period">/yr</span>
+                ${domain.price > 0 ? `<span class="nc-price">$${Math.round(domain.price)}</span><span class="nc-price-period">/yr</span>` : (available ? `<span class="nc-price-period">Price N/A</span>` : ``)}
             </div>
             <div class="nc-result-action">
-                <button class="nc-select-btn" onclick="selectDomainForCertificate('${domain.name}')">
-                    ${available ? 'Select' : 'View Alt'}
-                </button>
+                ${available 
+                    ? `<button class="nc-select-btn" onclick="selectDomainForCertificate('${domain.name}')">Select</button>`
+                    : `<span class="nc-unavailable" style="font-size:0.75rem;color:var(--text-secondary);">Try another TLD</span>`}
             </div>
         </div>`;
     }).join('');
@@ -862,24 +909,31 @@ function renderFilteredDomains(filter) {
 
 function filterDomains() {
     const input = document.getElementById('domainSearchInput');
-    const clearBtn = document.getElementById('searchClearBtn');
-    const query = input.value;
-    clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
+    const query = input.value.trim();
     
-    // Show a loading state for live search
-    const resultCount = document.getElementById('domainResultCount');
-    if (query.length >= 2) {
-        if (resultCount) resultCount.textContent = '...';
-        if (searchTimeout) clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(async () => {
-            await searchDomainsApi(query);
-            renderFilteredDomains(query);
-        }, 400);
-    } else {
-        liveDomainResults = [];
+    if (!query) {
+        searchPerformed = false;
+        showEmptyState();
+        const countEl = document.getElementById('domainResultCount');
+        if (countEl) countEl.textContent = '0';
+        document.getElementById('searchClearBtn').style.display = 'none';
+        return;
     }
     
-    renderFilteredDomains(query);
+    document.getElementById('searchClearBtn').style.display = 'flex';
+    
+    // Show loading
+    const container = document.getElementById('domainShopperGrid');
+    if (container) {
+        container.innerHTML = `<div class="nc-empty-state"><div class="nc-empty-state-icon" style="animation:spin 0.8s linear infinite;">🔍</div><h3>Searching for ${escapeHtml(query)}...</h3></div>`;
+    }
+    
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+        await searchDomainsApi(query);
+        searchPerformed = true;
+        renderFilteredDomains(query);
+    }, 300);
 }
 
 function clearDomainSearch() {
@@ -915,19 +969,23 @@ function resetAllFilters() {
     availableOnly = false;
     document.getElementById('availableOnly').checked = false;
 
-    renderFilteredDomains('');
+    searchPerformed = false;
+    showEmptyState();
+    const countEl = document.getElementById('domainResultCount');
+    if (countEl) countEl.textContent = '0';
     document.getElementById('domainSearchInput').focus();
 }
 
 // Simulate domain availability (80% chance available)
 function getDomainAvailability(domainName) {
-    // Use a simple hash to keep availability consistent per domain
-    let hash = 0;
-    for (let i = 0; i < domainName.length; i++) {
-        hash = ((hash << 5) - hash) + domainName.charCodeAt(i);
-        hash |= 0;
-    }
-    return Math.abs(hash) % 10 < 8; // 80% available
+    // Check live API results first
+    const live = liveDomainResults.find(d => d.name === domainName);
+    if (live) return live.available;
+    // Fallback: check static catalog
+    const catalog = domainShopperCatalog.find(d => d.name === domainName);
+    if (catalog && catalog.available !== undefined) return catalog.available;
+    // Default to unavailable if we don't know
+    return false;
 }
 
 // Color palette for TLD tags
@@ -980,6 +1038,12 @@ function selectTier(tier) {
     openStudio(null, tier);
 }
 
+function getDisplayOption() {
+    return (document.querySelector('input[name="displayOption"]:checked')?.value || 'frame');
+}
+function hasFramedOption() { return getDisplayOption() === 'frame'; }
+function hasScrollOption() { return getDisplayOption() === 'scroll'; }
+
 // ===== LIVE PREVIEW ENGINE =====
 function updatePreview() {
     currentCertificate.recipientName = document.getElementById('recipientName').value || '[Your Name]';
@@ -998,8 +1062,13 @@ function updatePreview() {
     if (frameUpgradeSection) frameUpgradeSection.classList.toggle('hidden', isEssential);
     if (certUpgradeSection) certUpgradeSection.classList.toggle('hidden', isEssential);
     if (isEssential) {
-        document.getElementById('frameUpgrade').checked = false;
         document.getElementById('certificateUpgrade').checked = false;
+        // Force scroll display for Essential
+        const scrollRadio = document.querySelector('input[name="displayOption"][value="scroll"]');
+        if (scrollRadio && !scrollRadio.checked) {
+            scrollRadio.checked = true;
+            switchDisplayOption('scroll');
+        }
     }
 
     const upgradeNotesSection = document.getElementById('upgradeNotesSection');
@@ -1014,28 +1083,20 @@ function updatePreview() {
         tierCustomizationSection.classList.toggle('hidden', !(currentCertificate.customizationEnabled && capabilities.canChangeFont));
     }
     if (frameOptionsSection) {
-        frameOptionsSection.classList.toggle('hidden', !document.getElementById('frameUpgrade').checked);
+        frameOptionsSection.classList.toggle('hidden', !hasFramedOption());
     }
 
     const certHTML = renderCertificate(currentCertificate);
-    const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
-    const hasScroll = document.getElementById('scrollOption')?.checked || false;
-    const frameWoodType = document.getElementById('frameWoodType')?.value || 'walnut';
+    const displayOption = getDisplayOption();
+    const hasFrame = displayOption === 'frame';
+    const hasScroll = displayOption === 'scroll';
+    const frameWoodType = document.getElementById('frameWoodType')?.value || 'black';
     
     const innerContainer = document.getElementById('certCanvasInner');
     if (innerContainer) {
         if (hasScroll) {
-            innerContainer.innerHTML = `
-                <div style="text-align:center;padding:1rem;">
-                    <div style="background:linear-gradient(180deg,#f5f0e8,#e8dcc8);border-radius:50% 50% 4px 4px;padding:0.5rem 2rem 1.5rem;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,0.12);">
-                        <div style="font-size:0.65rem;color:#8b7355;letter-spacing:2px;text-transform:uppercase;margin-bottom:0.25rem;">Rolled Certificate</div>
-                        <div style="width:120px;height:8px;background:linear-gradient(90deg,#d4c5a9,#f0e6d0,#d4c5a9);border-radius:4px;margin:0 auto;box-shadow:inset 0 1px 2px rgba(0,0,0,0.1);"></div>
-                        <div style="margin-top:0.5rem;font-size:0.6rem;color:#a09070;">Shipped in a protective tube</div>
-                    </div>
-                    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-secondary);">${cert.type} Certificate · Scroll delivery</div>
-                </div>
-            `;
-        } else if (hasFrame) {
+            innerContainer.innerHTML = certHTML;
+        } else {
             innerContainer.innerHTML = `
                 <div class="frame-outer">
                     <div class="frame-wood" data-wood="${frameWoodType}">
@@ -1047,8 +1108,6 @@ function updatePreview() {
                     </div>
                 </div>
             `;
-        } else {
-            innerContainer.innerHTML = certHTML;
         }
     }
     
@@ -1059,233 +1118,140 @@ function renderCertificate(cert) {
     const capabilities = getTierCapabilities(cert.type);
     const customizationEnabled = cert.customizationEnabled;
     
-    const fontFamily = customizationEnabled && capabilities.canChangeFont ? document.getElementById('fontStyle')?.value || 'Georgia' : 'Georgia';
-    const primaryColor = customizationEnabled && capabilities.canChangePrimaryColor ? document.getElementById('primaryColor')?.value || '#6B0B22' : '#6B0B22';
-    const secondaryColor = customizationEnabled && capabilities.canChangeSecondaryColor ? document.getElementById('secondaryColor')?.value || '#D62828' : '#D62828';
-    const borderStyle = customizationEnabled && capabilities.canChangeBorderStyle ? document.getElementById('borderStyle')?.value || 'classic' : 'classic';
+    const fontFamily = customizationEnabled && capabilities.canChangeFont 
+        ? (document.getElementById('fontStyle')?.value || 'Cormorant Garamond') : 'Cormorant Garamond';
+    const primaryColor = customizationEnabled && capabilities.canChangePrimaryColor 
+        ? (document.getElementById('primaryColor')?.value || '#6B0B22') : '#6B0B22';
+    const secondaryColor = customizationEnabled && capabilities.canChangeSecondaryColor 
+        ? (document.getElementById('secondaryColor')?.value || '#D62828') : '#D62828';
+    const borderStyle = customizationEnabled && capabilities.canChangeBorderStyle 
+        ? (document.getElementById('borderStyle')?.value || 'classic') : 'classic';
+    const sealStyle = customizationEnabled && capabilities.canChangeSealStyle 
+        ? (document.getElementById('sealStyle')?.value || 'classic') : 'classic';
+    const paperTexture = customizationEnabled && capabilities.canChangePaperTexture 
+        ? (document.getElementById('paperTexture')?.value || 'smooth') : 'smooth';
+    const awardTitle = customizationEnabled && capabilities.canChangeAwardTitle 
+        ? (document.getElementById('awardTitle')?.value || 'Digital Domain Holder') : 'Digital Domain Holder';
+    const goldFoil = customizationEnabled && capabilities.canUseGoldFoil 
+        ? (document.getElementById('goldFoilAccent')?.checked || false) : false;
+    const cornerOrnament = customizationEnabled && capabilities.canChangeCornerOrnament 
+        ? (document.getElementById('cornerOrnamentStyle')?.value || 'classic') : 'classic';
     
-    // New customization options
-    const sealStyle = customizationEnabled && capabilities.canChangeSealStyle ? document.getElementById('sealStyle')?.value || 'classic' : 'classic';
-    const paperTexture = customizationEnabled && capabilities.canChangePaperTexture ? document.getElementById('paperTexture')?.value || 'smooth' : 'smooth';
-    const awardTitle = customizationEnabled && capabilities.canChangeAwardTitle ? (document.getElementById('awardTitle')?.value || 'Digital Domain Holder') : 'Digital Domain Holder';
-    const goldFoil = customizationEnabled && capabilities.canUseGoldFoil ? document.getElementById('goldFoilAccent')?.checked || false : false;
-    const cornerOrnament = customizationEnabled && capabilities.canChangeCornerOrnament ? document.getElementById('cornerOrnamentStyle')?.value || 'classic' : 'classic';
-    const filigreePattern = customizationEnabled && capabilities.canChangeFiligree ? document.getElementById('filigreePattern')?.value || 'none' : 'none';
-    
-    let businessCardMarkup = '';
-    
-    const customizationMarkup = customizationEnabled ? `<div class="cert-notes" style="font-style: italic; font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.75rem;">${escapeHtml(cert.customizationNotes || '')}</div>` : '';
-
-    const borderVariant = borderStyle === 'double' ? 'cert-border-double' : borderStyle === 'ornate' ? 'cert-border-ornate' : 'cert-border-classic';
-    const paperClass = 'paper-' + paperTexture;
-    const foilClass = goldFoil ? 'gold-foil' : '';
-    const cornerClass = 'corner-' + cornerOrnament;
-    const filigreeClass = filigreePattern !== 'none' ? 'filigree-' + filigreePattern : '';
-
-    // === SEAL SVG BY STYLE ===
-    let sealSvg = '';
-    if (sealStyle === 'shield') {
-        sealSvg = `
-            <svg class="seal-svg" viewBox="0 0 120 120" fill="none">
-                <path d="M 60 10 L 100 30 L 100 70 Q 100 95, 60 110 Q 20 95, 20 70 L 20 30 Z" stroke="${primaryColor}" stroke-width="2" fill="${primaryColor}08"/>
-                <path d="M 60 18 L 92 34 L 92 68 Q 92 90, 60 102 Q 28 90, 28 68 L 28 34 Z" stroke="${secondaryColor}" stroke-width="0.8" fill="none" stroke-dasharray="2.5 2.5"/>
-                <path d="M 50 50 L 60 38 L 70 50 L 60 62 Z" fill="${primaryColor}22" stroke="${primaryColor}" stroke-width="1.5"/>
-                <circle cx="60" cy="50" r="3" fill="${secondaryColor}"/>
-                <text x="60" y="80" text-anchor="middle" font-size="7" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
-            </svg>`;
-    } else if (sealStyle === 'modern') {
-        sealSvg = `
-            <svg class="seal-svg" viewBox="0 0 120 120" fill="none">
-                <circle cx="60" cy="60" r="52" stroke="${primaryColor}" stroke-width="1.5" fill="none"/>
-                <circle cx="60" cy="60" r="46" stroke="${secondaryColor}" stroke-width="1" fill="none"/>
-                <rect x="35" y="35" width="50" height="50" rx="4" fill="${primaryColor}10" stroke="${primaryColor}" stroke-width="1.5"/>
-                <text x="60" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
-                <line x1="35" y1="75" x2="85" y2="75" stroke="${secondaryColor}" stroke-width="0.8"/>
-                <line x1="35" y1="78" x2="85" y2="78" stroke="${secondaryColor}" stroke-width="0.8"/>
-            </svg>`;
-    } else if (sealStyle === 'ornate') {
-        sealSvg = `
-            <svg class="seal-svg" viewBox="0 0 120 120" fill="none">
-                <circle cx="60" cy="60" r="56" stroke="${primaryColor}" stroke-width="2" fill="none"/>
-                <circle cx="60" cy="60" r="50" stroke="${secondaryColor}" stroke-width="0.8" fill="none" stroke-dasharray="4 3"/>
-                <circle cx="60" cy="60" r="44" stroke="${primaryColor}" stroke-width="0.5" fill="none"/>
-                <path d="M 35 60 A 25 25 0 0 1 85 60" stroke="${secondaryColor}" stroke-width="1.2" fill="none"/>
-                <path d="M 85 60 A 25 25 0 0 1 35 60" stroke="${secondaryColor}" stroke-width="1.2" fill="none"/>
-                <path d="M 40 60 L 60 42 L 80 60 L 60 78 Z" fill="${primaryColor}22" stroke="${primaryColor}" stroke-width="1"/>
-                <circle cx="60" cy="60" r="5" fill="${secondaryColor}"/>
-                <text x="60" y="63" text-anchor="middle" font-size="6" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
-            </svg>`;
-    } else {
-        // Classic round (default)
-        sealSvg = `
-            <svg class="seal-svg" viewBox="0 0 120 120" fill="none">
-                <circle cx="60" cy="60" r="56" stroke="${primaryColor}" stroke-width="2" fill="none"/>
-                <circle cx="60" cy="60" r="50" stroke="${primaryColor}" stroke-width="0.5" fill="none"/>
-                <circle cx="60" cy="60" r="44" stroke="${secondaryColor}" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
-                <path d="M 40 60 L 60 45 L 80 60 L 60 75 Z" fill="${primaryColor}22" stroke="${primaryColor}" stroke-width="1"/>
-                <circle cx="60" cy="60" r="6" fill="${secondaryColor}"/>
-                <text x="60" y="58" text-anchor="middle" font-size="8" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
-            </svg>`;
-    }
-
-    // === CORNER ORNAMENTS ===
-    let cornerMarkup = '';
-    if (cornerOrnament === 'none') {
-        cornerMarkup = '';
-    } else if (cornerOrnament === 'victorian') {
-        cornerMarkup = `
-            <div class="corner-ornament corner-ornament-tl" style="color: ${primaryColor};"><span class="corner-flourish">❧</span></div>
-            <div class="corner-ornament corner-ornament-tr" style="color: ${primaryColor};"><span class="corner-flourish">❧</span></div>
-            <div class="corner-ornament corner-ornament-bl" style="color: ${primaryColor};"><span class="corner-flourish">❧</span></div>
-            <div class="corner-ornament corner-ornament-br" style="color: ${primaryColor};"><span class="corner-flourish">❧</span></div>`;
-    } else if (cornerOrnament === 'artdeco') {
-        cornerMarkup = `
-            <div class="corner-ornament corner-ornament-tl" style="color: ${primaryColor};"><span class="corner-flourish">◇</span></div>
-            <div class="corner-ornament corner-ornament-tr" style="color: ${primaryColor};"><span class="corner-flourish">◇</span></div>
-            <div class="corner-ornament corner-ornament-bl" style="color: ${primaryColor};"><span class="corner-flourish">◇</span></div>
-            <div class="corner-ornament corner-ornament-br" style="color: ${primaryColor};"><span class="corner-flourish">◇</span></div>`;
-    } else {
-        // Classic corner decorations (original)
-        cornerMarkup = `
-            <div class="corner corner-tl"></div>
-            <div class="corner corner-tr"></div>
-            <div class="corner corner-bl"></div>
-            <div class="corner corner-br"></div>`;
-    }
-
-    // === FILIGREE PATTERN ===
-    let filigreeMarkup = '';
-    if (filigreePattern === 'subtle') {
-        filigreeMarkup = `<div class="cert-filigree cert-filigree-subtle" style="color: ${primaryColor};">
-            <div class="filigree-border-top"></div>
-            <div class="filigree-border-bottom"></div>
-        </div>`;
-    } else if (filigreePattern === 'ornate') {
-        filigreeMarkup = `<div class="cert-filigree cert-filigree-ornate" style="color: ${primaryColor};">
-            <div class="filigree-border-top"><span>✻</span><span>✿</span><span>✻</span><span>✿</span><span>✻</span></div>
-            <div class="filigree-border-bottom"><span>✻</span><span>✿</span><span>✻</span><span>✿</span><span>✻</span></div>
-        </div>`;
-    } else if (filigreePattern === 'geometric') {
-        filigreeMarkup = `<div class="cert-filigree cert-filigree-geometric" style="color: ${primaryColor};">
-            <div class="filigree-border-top"><span>◈</span><span>◇</span><span>◈</span><span>◇</span><span>◈</span></div>
-            <div class="filigree-border-bottom"><span>◈</span><span>◇</span><span>◈</span><span>◇</span><span>◈</span></div>
-        </div>`;
-    }
-
-    const goldFoilClass = goldFoil ? 'gold-foil' : '';
+    const goldClass = goldFoil ? 'gold-foil' : '';
     const isLandscape = document.querySelector('input[name="certOrientation"]:checked')?.value === 'landscape';
     const orientClass = isLandscape ? 'cert-landscape' : '';
+    const borderMap = { double: 'cert-border-double', ornate: 'cert-border-ornate' };
+    const borderClass = borderMap[borderStyle] || 'cert-border-classic';
+    const paperClass = 'paper-' + paperTexture;
+    
+    const cornerEl = cornerOrnament === 'victorian' ? '&#10086;' : cornerOrnament === 'artdeco' ? '&#9670;' : '';
+    const cornerMarkup = cornerEl ? `
+        <div class="corner-ornament corner-ornament-tl" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
+        <div class="corner-ornament corner-ornament-tr" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
+        <div class="corner-ornament corner-ornament-bl" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
+        <div class="corner-ornament corner-ornament-br" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
+    ` : `
+        <div class="corner corner-tl" style="border-color:${primaryColor}30;"></div>
+        <div class="corner corner-tr" style="border-color:${primaryColor}30;"></div>
+        <div class="corner corner-bl" style="border-color:${primaryColor}30;"></div>
+        <div class="corner corner-br" style="border-color:${primaryColor}30;"></div>`;
+
+    const sealSvg = sealStyle === 'shield' ? `
+        <svg viewBox="0 0 100 100" style="width:65px;height:65px;">
+            <path d="M50 5 L90 25 L90 65 Q90 90 50 105 Q10 90 10 65 L10 25 Z" fill="${primaryColor}08" stroke="${primaryColor}" stroke-width="1.5"/>
+            <text x="50" y="55" text-anchor="middle" font-size="14" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
+        </svg>` : `
+        <svg viewBox="0 0 100 100" style="width:65px;height:65px;">
+            <circle cx="50" cy="50" r="46" fill="${primaryColor}08" stroke="${primaryColor}" stroke-width="1.5"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="${secondaryColor}" stroke-width="1" stroke-dasharray="3 3"/>
+            <path d="M35 50 L50 35 L65 50 L50 65 Z" fill="${primaryColor}18" stroke="${primaryColor}" stroke-width="1.2"/>
+            <text x="50" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
+        </svg>`;
+
+    const domainInfo = cert.domainName && cert.domainName !== '[domain.com]' ? cert.domainName.toLowerCase() : '';
+    const domainYearsText = cert.domainPrice > 0 ? ` \u00b7 ${cert.domainYears} ${cert.domainYears === 1 ? 'year' : 'years'}` : '';
+    
+    // Smart text scaling based on name/title length
+    const nameLen = (cert.recipientName || '').length;
+    const nameSize = nameLen > 30 ? '0.9rem' : nameLen > 20 ? '1.05rem' : '1.2rem';
+    const awardLen = (awardTitle || '').length;
+    const awardSize = awardLen > 35 ? '0.6rem' : awardLen > 25 ? '0.7rem' : '0.8rem';
+    const notesLen = (cert.customizationNotes || '').length;
+    const notesSize = notesLen > 80 ? '0.42rem' : '0.5rem';
 
     return `
-        <div class="certificate-wrapper ${borderVariant} ${paperClass} ${goldFoilClass} ${filigreeClass} ${orientClass}">
+    <div class="certificate-wrapper ${borderClass} ${paperClass} ${goldClass} ${orientClass}">
+        <div class="certificate-inner" style="font-family:'${fontFamily}',Georgia,serif;">
             ${cornerMarkup}
-            ${filigreeMarkup}
             
-            <img class="cert-watermark-logo" src="image copy.png" alt="" aria-hidden="true">
+            <div style="height:3px;background:linear-gradient(90deg,transparent,${primaryColor},${secondaryColor},${primaryColor},transparent);margin:0 0 0.5rem;"></div>
             
-            <div class="certificate-inner">
-                <!-- Top Latin Motto -->
-                <div class="cert-motto ${goldFoilClass}" style="font-family: ${fontFamily};">VERITAS · DIGITALIS · HONOR</div>
-                
-                <!-- Decorative divider -->
-                <div class="cert-divider">
-                    <span class="divider-ornament">❧</span>
+            <div style="text-align:center;margin-bottom:0.3rem;">
+                <div style="font-size:1rem;font-weight:700;letter-spacing:3px;color:${primaryColor};">DOT DEED</div>
+                <div style="font-size:0.5rem;color:${secondaryColor};letter-spacing:2px;text-transform:uppercase;">Registry of Digital Estates</div>
+            </div>
+            
+            <div style="text-align:center;font-size:0.45rem;color:${primaryColor}60;letter-spacing:2px;margin-bottom:0.4rem;font-style:italic;">Veritas \u00b7 Digitalis \u00b7 Honor</div>
+            
+            <div style="display:flex;align-items:center;gap:0.5rem;margin:0 1rem 0.5rem;">
+                <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,${primaryColor}40);"></div>
+                <span style="color:${primaryColor}60;font-size:0.55rem;">&#9884;</span>
+                <div style="flex:1;height:1px;background:linear-gradient(90deg,${primaryColor}40,transparent);"></div>
+            </div>
+            
+            <div style="text-align:center;font-size:0.5rem;color:${primaryColor}99;letter-spacing:1px;margin-bottom:0.25rem;">By the authority vested in the Registry, it is hereby certified that</div>
+            
+            <div style="text-align:center;font-size:${nameSize};font-weight:700;color:${primaryColor};margin-bottom:0.2rem;letter-spacing:1px;font-family:'${fontFamily}',Georgia,serif;">
+                ${escapeHtml(cert.recipientName)}
+            </div>
+            
+            <div style="text-align:center;font-size:0.45rem;color:${primaryColor}88;letter-spacing:1px;margin-bottom:0.25rem;">having demonstrated rightful stewardship, is granted the title of</div>
+            
+            <div style="text-align:center;margin:0.2rem 2rem;padding:0.2rem 0;border-top:1px solid ${primaryColor}30;border-bottom:1px solid ${primaryColor}30;">
+                <span style="font-size:${awardSize};font-weight:700;color:${primaryColor};letter-spacing:1px;">${escapeHtml(awardTitle)}</span>
+            </div>
+            
+            ${domainInfo ? `
+            <div style="text-align:center;margin:0.4rem 0 0.2rem;">
+                <div style="font-size:0.45rem;color:${primaryColor}88;letter-spacing:1px;margin-bottom:0.1rem;">Network Namespace</div>
+                <div style="display:inline-block;padding:0.12rem 1rem;background:${primaryColor};color:#fff;font-size:0.7rem;font-weight:600;letter-spacing:0.5px;border-radius:2px;">${domainInfo}</div>
+                ${domainYearsText ? `<div style="font-size:0.4rem;color:${primaryColor}66;margin-top:0.08rem;">Registered for${domainYearsText}</div>` : ''}
+            </div>` : ''}
+            
+            ${customizationEnabled && cert.customizationNotes ? `
+            <div style="text-align:center;font-size:${notesSize};color:${primaryColor}99;font-style:italic;margin:0.15rem 1.5rem;line-height:1.4;">${escapeHtml(cert.customizationNotes)}</div>` : ''}
+            
+            <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin:0.4rem 0 0.25rem;">
+                <div style="text-align:center;flex:1;max-width:90px;">
+                    <div style="height:1px;background:${primaryColor};margin-bottom:0.12rem;"></div>
+                    <div style="font-size:0.45rem;color:${primaryColor};font-weight:600;letter-spacing:1px;">Registrar</div>
+                    <div style="font-size:0.38rem;color:${primaryColor}88;">Officer of the Registry</div>
                 </div>
-
-                <!-- Seal / Crest -->
-                <div class="cert-seal-large seal-${sealStyle} ${goldFoilClass}" style="color: ${primaryColor};">
-                    ${sealSvg}
-                </div>
-
-                <!-- Institution Name -->
-                <div class="cert-top" style="font-family: ${fontFamily};">
-                    <div class="cert-institution ${goldFoilClass}" style="color: ${primaryColor};">DOT DEED</div>
-                    <div class="cert-department" style="color: ${secondaryColor};">Registry of Digital Estates</div>
-                </div>
-
-                <!-- Decorative divider -->
-                <div class="cert-divider">
-                    <span class="divider-line" style="background: ${primaryColor};"></span>
-                    <span class="divider-ornament ${goldFoilClass}" style="color: ${primaryColor};">⚜</span>
-                    <span class="divider-line" style="background: ${primaryColor};"></span>
-                </div>
-
-                <!-- Certificate Body -->
-                <div class="cert-body">
-                    <div class="cert-preface" style="color: ${primaryColor};">
-                        By the authority vested in the Registry of Digital Estates, it is hereby certified that
-                    </div>
-                    
-                    <div class="cert-recipient ${goldFoilClass}" style="font-family: ${fontFamily};">
-                        ${escapeHtml(cert.recipientName)}
-                    </div>
-                    
-                    <div class="cert-preface">
-                        having fulfilled all requirements and demonstrated rightful stewardship, is hereby granted the title of
-                    </div>
-                    
-                    <div class="cert-degree ${goldFoilClass}" style="color: ${primaryColor}; border-color: ${secondaryColor};">
-                        ${escapeHtml(awardTitle)}
-                    </div>
-                    
-                    <div class="cert-domain-wrapper">
-                        <span class="cert-domain-label">Network Namespace:</span>
-                        <span class="cert-domain ${goldFoilClass}" style="background: ${primaryColor};">
-                            ${escapeHtml(cert.domainName).toLowerCase()}
-                        </span>
-                    </div>
-                    
-                    <div class="cert-preface" style="font-size: 0.85rem;">
-                        In witness whereof, this certificate is issued under the seal of the Registry and attested by the undersigned officers.
-                    </div>
-                    
-                    ${customizationMarkup}
-                    ${businessCardMarkup}
-                </div>
-
-                <!-- Signatures -->
-                <div class="cert-footer">
-                    <div class="signature-block">
-                        <div class="signature-line" style="background: ${primaryColor};"></div>
-                        <div class="signature-label ${goldFoilClass}" style="color: ${primaryColor};">Registrar</div>
-                        <div class="signature-title">Officer of the Registry</div>
-                    </div>
-                    
-                    <div class="signature-seal ${goldFoilClass}">
-                        <svg viewBox="0 0 40 40" width="40" height="40">
-                            <circle cx="20" cy="20" r="18" stroke="${primaryColor}" stroke-width="1" fill="none"/>
-                            <text x="20" y="22" text-anchor="middle" font-size="10" font-weight="bold" fill="${secondaryColor}" font-family="serif">DD</text>
-                        </svg>
-                    </div>
-                    
-                    <div class="signature-block">
-                        <div class="signature-line" style="background: ${primaryColor};"></div>
-                        <div class="signature-label ${goldFoilClass}" style="color: ${primaryColor};">Chancellor</div>
-                        <div class="signature-title">Dean of Digital Estates</div>
-                    </div>
-                </div>
-
-                <!-- Bottom details -->
-                <div class="cert-bottom">
-                    <div class="cert-divider">
-                        <span class="divider-line" style="background: ${primaryColor}; opacity: 0.3;"></span>
-                    </div>
-                    <div class="cert-date">Issued this ${formattedDate}</div>
-                    <div class="cert-id">Certificate No. ${cert.registryId}</div>
-                    ${cert.claimToken ? `
-                    <div class="cert-claim-section" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid ${primaryColor}33; text-align: center;">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(cert.claimUrl || '')}" 
-                             alt="Claim your domain QR code" 
-                             style="width: 60px; height: 60px; display: block; margin: 0 auto 0.3rem;">
-                        <div style="font-size: 0.6rem; color: var(--text-secondary, #666); letter-spacing: 0.5px;">
-                            Scan to claim ${escapeHtml(cert.domainName)}
-                        </div>
-                    </div>
-                    ` : ''}
+                <div style="flex:0 0 auto;">${sealSvg}</div>
+                <div style="text-align:center;flex:1;max-width:90px;">
+                    <div style="height:1px;background:${primaryColor};margin-bottom:0.12rem;"></div>
+                    <div style="font-size:0.45rem;color:${primaryColor};font-weight:600;letter-spacing:1px;">Chancellor</div>
+                    <div style="font-size:0.38rem;color:${primaryColor}88;">Dean of Digital Estates</div>
                 </div>
             </div>
+            
+            <div style="height:1px;background:linear-gradient(90deg,transparent,${primaryColor}30,transparent);margin:0 1rem 0.25rem;"></div>
+            
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0.8rem;">
+                <div style="font-size:0.42rem;color:${primaryColor}88;">Issued ${formattedDate}</div>
+                <div style="font-size:0.42rem;color:${primaryColor}88;">No. ${cert.registryId}</div>
+                ${cert.domainName && cert.domainName !== '[domain.com]' ? `
+                <div style="display:flex;align-items:center;gap:0.25rem;">
+                    ${cert.claimToken 
+                        ? `<img src="${getQRDataUrl(cert.claimUrl || '')}" alt="" style="width:22px;height:22px;">`
+                        : `<div style="width:22px;height:22px;border:1px dashed ${primaryColor}40;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:${primaryColor}40;">QR</div>`}
+                    <div style="font-size:0.38rem;color:${primaryColor}66;line-height:1.2;">Claim<br>domain</div>
+                </div>` : ''}
+            </div>
+            
+            <div style="height:2px;background:linear-gradient(90deg,transparent,${primaryColor},${secondaryColor},${primaryColor},transparent);margin:0.35rem 0 0;"></div>
         </div>
-    `;
+    </div>`;
 }
 
 // ===== UTILITY FUNCTIONS =====
@@ -1312,6 +1278,47 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+// Generate QR code as an embedded data URL (no CORS issues with html2canvas)
+const qrCache = {};
+function getQRDataUrl(text) {
+    if (!text) return '';
+    if (qrCache[text]) return qrCache[text];
+    // Generate QR code via external API, convert to data URL for embedding
+    const imgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(text)}`;
+    // For the initial render, use the external URL directly (browser loads it fine)
+    // html2canvas captures it at capture time using canvas rendering below
+    qrCache[text] = imgUrl;
+    return imgUrl;
+}
+
+// Pre-convert QR images to data URLs for reliable html2canvas capture
+async function ensureQRDataUrls() {
+    const cert = currentCertificate;
+    if (!cert.claimUrl) return;
+    
+    const url = cert.claimUrl;
+    if (qrCache[url] && qrCache[url].startsWith('data:')) return; // Already converted
+    
+    try {
+        const imgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}`;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = imgUrl;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = 60;
+        canvas.height = 60;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 60, 60);
+        qrCache[url] = canvas.toDataURL('image/png');
+    } catch (e) {
+        console.warn('QR data URL conversion failed, using fallback:', e.message);
+    }
+}
+
 // ===== BILLING & CHECKOUT =====
 const stripePublishableKey = 'pk_test_51Txa9ZRDgGi4zkadjEz5sK5vNTU3JNgslCFkygmKMGjTQKa080Tkkf11baDdaVbzEMyTnw6uGJ7kTk8aoH8b2jrD00tUNsVND8';
 let stripe = null;
@@ -1335,7 +1342,7 @@ function printCertificate() {
     
     // Fetch Prodigi quote based on shipping address country
     const country = document.getElementById('billingCountry')?.value || 'US';
-    const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
+    const hasFrame = hasFramedOption();
     
     fetchProdigiQuotes(country, hasFrame).then(() => {
         // Populate billing page
@@ -1363,10 +1370,14 @@ function printCertificate() {
 // Re-fetch Prodigi quote when country changes on billing page
 function onBillingCountryChange() {
     const country = document.getElementById('billingCountry')?.value;
-    const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
+    const hasFrame = hasFramedOption();
     if (country) {
         fetchProdigiQuotes(country, hasFrame).then(() => populateBilling());
     }
+}
+
+function onDomainYearsChange() {
+    populateBilling();
 }
 
 function initStripe() {
@@ -1402,8 +1413,45 @@ function initStripe() {
 // ===== PRODIGI PRINT FULFILLMENT =====
 let prodigiQuotes = [];
 let selectedShippingMethod = 'Standard';
+let cachedCertDataUrl = null;
+let backgroundRenderQueued = false;
+
+// Background canvas cache — renders certificate after every preview update
+// so it's instantly available when the user places the order
+async function backgroundRenderCache() {
+    const previewEl = document.getElementById('certCanvasInner');
+    if (!previewEl || typeof html2canvas === 'undefined') return;
+    try {
+        const canvas = await html2canvas(previewEl, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+        });
+        cachedCertDataUrl = canvas.toDataURL('image/png');
+    } catch (e) {
+        // Silently ignore — will capture fresh on order if needed
+    }
+}
+
+// Debounced wrapper: queues a single background render after changes settle
+function queueBackgroundRender() {
+    if (backgroundRenderQueued) return;
+    backgroundRenderQueued = true;
+    // Use rAF + setTimeout to let DOM settle after preview updates
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            backgroundRenderQueued = false;
+            backgroundRenderCache();
+        }, 300);
+    });
+}
 
 async function captureCertImage() {
+    // Use cached version if available (instant), otherwise capture fresh
+    if (cachedCertDataUrl) return cachedCertDataUrl;
+    
     const previewEl = document.getElementById('certCanvasInner');
     if (!previewEl || typeof html2canvas === 'undefined') return null;
     try {
@@ -1534,8 +1582,8 @@ function selectShippingMethod(method) {
 function populateBilling() {
     const type = currentCertificate.type;
     const domainPrice = currentCertificate.domainPrice || 0;
-    const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
-    const hasScroll = document.getElementById('scrollOption')?.checked || false;
+    const hasFrame = (document.querySelector('input[name="displayOption"]:checked')?.value || 'frame') === 'frame';
+    const hasScroll = !hasFrame;
     
     let itemsHtml = '';
     let subtotal = 0;
@@ -1606,17 +1654,20 @@ function populateBilling() {
         </div>`;
     subtotal += shippingPrice;
     
-    // Domain (pass-through, no markup)
+    // Domain (pass-through, no markup) — multiplied by years
     if (domainPrice > 0) {
+        const years = parseInt(document.getElementById('domainYears')?.value) || 1;
+        const totalDomainPrice = domainPrice * years;
+        const yearLabel = years === 1 ? '1 year' : `${years} years`;
         itemsHtml += `
             <div class="billing-item">
                 <div class="billing-item-left">
                     <div class="billing-item-name">Domain: ${escapeHtml(currentCertificate.domainName)}</div>
-                    <div class="billing-item-desc">Domain registration (at cost)</div>
+                    <div class="billing-item-desc">${yearLabel} · $${Math.round(domainPrice)}/yr (at cost)</div>
                 </div>
-                <div class="billing-item-price">$${Math.round(domainPrice)}</div>
+                <div class="billing-item-price">$${Math.round(totalDomainPrice)}</div>
             </div>`;
-        subtotal += domainPrice;
+        subtotal += totalDomainPrice;
     }
     
     const total = subtotal;
@@ -1628,6 +1679,15 @@ function populateBilling() {
     
     // Render shipping method options
     renderShippingMethods();
+    
+    // Store domain years in certificate state
+    currentCertificate.domainYears = parseInt(document.getElementById('domainYears')?.value) || 1;
+    
+    // Show/hide domain years selector
+    const yearsSection = document.getElementById('domainYearsSection');
+    if (yearsSection) {
+        yearsSection.style.display = domainPrice > 0 ? 'flex' : 'none';
+    }
     
     const recipientName = document.getElementById('recipientName').value || '';
     if (document.getElementById('billingFullName')) {
@@ -1659,8 +1719,17 @@ async function placeOrder() {
     btn.textContent = 'Preparing order…';
     
     try {
-        // Step 1: Capture certificate as image
+        // Step 1: Capture certificate as image (from background cache — instant)
         btn.textContent = 'Generating certificate…';
+        
+        // Ensure QR is up to date, then grab cached canvas
+        await ensureQRDataUrls();
+        if (cachedCertDataUrl) {
+            // Re-render to pick up QR data URL, then update cache
+            updatePreview();
+            await backgroundRenderCache();
+        }
+        
         const certDataUrl = await captureCertImage();
         if (!certDataUrl) {
             alert('Failed to generate certificate image. Please try again.');
@@ -1740,10 +1809,43 @@ async function placeOrder() {
         }
         
         if (paymentIntent.status === 'succeeded') {
-            // Step 5: Create claim token for domain gifting
+            // Step 5: Purchase the domain via Name.com
+            let domainPurchased = false;
+            if (currentCertificate.domainPrice > 0 && currentCertificate.domainName && currentCertificate.domainName !== '[domain.com]') {
+                try {
+                    btn.textContent = 'Registering domain…';
+                    const domainYears = parseInt(document.getElementById('domainYears')?.value) || 1;
+                    const purchaseRes = await fetch('/api/purchase-domain', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            domain: currentCertificate.domainName,
+                            years: domainYears,
+                            registrantName: name,
+                            registrantEmail: userEmail || email,
+                            registrantPhone: '',
+                            addressLine1: address,
+                            addressCity: city,
+                            addressState: state,
+                            addressZip: zip,
+                            addressCountry: country,
+                        }),
+                    });
+                    const purchaseData = await purchaseRes.json();
+                    if (purchaseData.success) {
+                        domainPurchased = true;
+                        console.log('Domain registered:', purchaseData.domain);
+                    }
+                } catch (e) {
+                    console.log('Domain purchase deferred:', e.message);
+                }
+            }
+            
+            // Step 6: Create claim token for domain gifting
             let claimToken = null;
             let claimUrl = null;
             if (currentCertificate.domainName && currentCertificate.domainName !== '[domain.com]') {
+                btn.textContent = 'Creating gift claim…';
                 try {
                     const claimRes = await fetch('/api/create-claim', {
                         method: 'POST',
@@ -1762,14 +1864,14 @@ async function placeOrder() {
                         currentCertificate.claimUrl = claimUrl;
                     }
                 } catch (e) {
-                    console.log('Claim creation skipped, domain gifting not available:', e.message);
+                    console.log('Claim creation skipped:', e.message);
                 }
             }
             
-            // Step 6: Create Prodigi print order
+            // Step 7: Create Prodigi print order
             btn.textContent = 'Placing print order…';
             
-            const hasFrame = document.getElementById('frameUpgrade')?.checked || false;
+            const hasFrame = hasFramedOption();
             const printCost = getProdigiPrintCost();
             const userEmail = currentUser?.email || '';
             const finalTotalAmount = parseFloat(document.getElementById('billingTotal').textContent.replace('$', ''));
@@ -1789,6 +1891,7 @@ async function placeOrder() {
                         countryCode: country,
                     },
                     hasFrame,
+                    frameColor: document.getElementById('frameWoodType')?.value || 'black',
                     shippingMethod: selectedShippingMethod || 'Standard',
                     certificateImageUrl: certImageUrl,
                     merchantReference: `DOTDEED-${Date.now()}`,
@@ -1810,6 +1913,9 @@ Your ${currentCertificate.type} certificate is being printed.`;
             if (orderData.orderId) {
                 successMsg += `\n\n📦 Print order #: ${orderData.orderId}`;
                 successMsg += `\n🔗 Track at: http://localhost:5000/?order=${orderData.orderId}`;
+            }
+            if (domainPurchased) {
+                successMsg += `\n\n🌐 Domain ${currentCertificate.domainName} registered!`;
             }
             if (claimToken) {
                 successMsg += `\n\n🎁 Domain gifting active!`;
@@ -2061,3 +2167,21 @@ async function submitClaim(token) {
     }
     return false;
 }
+
+// ===== COOKIE CONSENT =====
+function acceptCookies() {
+    localStorage.setItem('cookieConsent', 'accepted');
+    document.getElementById('cookieBanner').style.display = 'none';
+}
+
+(function initCookieBanner() {
+    const banner = document.getElementById('cookieBanner');
+    if (!banner) return;
+    if (!localStorage.getItem('cookieConsent')) {
+        // Show after a brief delay
+        setTimeout(() => {
+            banner.style.display = 'block';
+            banner.style.animation = 'slideInUp 0.4s ease';
+        }, 800);
+    }
+})();
