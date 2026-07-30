@@ -585,6 +585,54 @@
                         <span class="form-hint">When the certificate was issued</span>
                     </div>
 
+                    <!-- Theme Presets -->
+                    <div class="form-field">
+                        <label class="form-label">Certificate Theme</label>
+                        <div class="theme-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:0.5rem;">
+                            <div class="theme-card active" data-theme="classic" onclick="applyTheme('classic')" style="padding:0.5rem;border:1.5px solid var(--deep-maroon);border-radius:8px;text-align:center;cursor:pointer;font-size:0.7rem;background:rgba(107,11,34,0.06);">
+                                <div style="font-size:1.2rem;">📜</div><div style="font-weight:600;margin-top:0.2rem;">Classic</div>
+                            </div>
+                            <div class="theme-card" data-theme="birthday" onclick="applyTheme('birthday')" style="padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.7rem;">
+                                <div style="font-size:1.2rem;">🎂</div><div style="font-weight:600;margin-top:0.2rem;">Birthday</div>
+                            </div>
+                            <div class="theme-card" data-theme="babyshower" onclick="applyTheme('babyshower')" style="padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.7rem;">
+                                <div style="font-size:1.2rem;">👶</div><div style="font-weight:600;margin-top:0.2rem;">Baby Shower</div>
+                            </div>
+                            <div class="theme-card" data-theme="anniversary" onclick="applyTheme('anniversary')" style="padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.7rem;">
+                                <div style="font-size:1.2rem;">💍</div><div style="font-weight:600;margin-top:0.2rem;">Anniversary</div>
+                            </div>
+                            <div class="theme-card" data-theme="graduation" onclick="applyTheme('graduation')" style="padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.7rem;">
+                                <div style="font-size:1.2rem;">🎓</div><div style="font-weight:600;margin-top:0.2rem;">Graduation</div>
+                            </div>
+                            <div class="theme-card" data-theme="business" onclick="applyTheme('business')" style="padding:0.5rem;border:1.5px solid var(--border-light);border-radius:8px;text-align:center;cursor:pointer;font-size:0.7rem;">
+                                <div style="font-size:1.2rem;">💼</div><div style="font-weight:600;margin-top:0.2rem;">Business</div>
+                            </div>
+                        </div>
+                        <span class="form-hint">Each theme has a unique color palette and certificate text.</span>
+                    </div>
+
+                    <!-- Theme-specific fields -->
+                    <div id="themeAgeField" class="form-field hidden">
+                        <label for="themeAge" class="form-label">Celebrating Age</label>
+                        <input type="number" id="themeAge" class="form-input" placeholder="e.g. 21" min="0" max="150" oninput="updatePreview();queueBackgroundRender();">
+                    </div>
+                    <div id="themeBabyField" class="form-field hidden">
+                        <label for="themeBabyName" class="form-label">Baby's Name</label>
+                        <input type="text" id="themeBabyName" class="form-input" placeholder="e.g. Baby Emma" maxlength="40" oninput="updatePreview();queueBackgroundRender();">
+                    </div>
+                    <div id="themeYearsField" class="form-field hidden">
+                        <label for="themeYears" class="form-label">Years Together</label>
+                        <input type="number" id="themeYears" class="form-input" placeholder="e.g. 5" min="0" max="100" oninput="updatePreview();queueBackgroundRender();">
+                    </div>
+                    <div id="themeDegreeField" class="form-field hidden">
+                        <label for="themeDegree" class="form-label">Degree / Program</label>
+                        <input type="text" id="themeDegree" class="form-input" placeholder="e.g. B.S. Computer Science" maxlength="60" oninput="updatePreview();queueBackgroundRender();">
+                    </div>
+                    <div id="themeCompanyField" class="form-field hidden">
+                        <label for="themeCompany" class="form-label">Company Name</label>
+                        <input type="text" id="themeCompany" class="form-input" placeholder="e.g. Acme Inc." maxlength="60" oninput="updatePreview();queueBackgroundRender();">
+                    </div>
+
                     <div id="certificateUpgradeSection" class="form-field">
                         <label class="form-label">Certificate Enhancements</label>
                         <label class="checkbox-row">
@@ -621,41 +669,13 @@
                                 <option value="double">Double</option>
                                 <option value="ornate">Ornate</option>
                             </select>
-                            <label for="sealStyle">Seal / Crest style</label>
-                            <select id="sealStyle">
-                                <option value="classic">Classic Round</option>
-                                <option value="shield">Shield Crest</option>
-                                <option value="modern">Modern Minimal</option>
-                                <option value="ornate">Ornate Ring</option>
-                            </select>
-                            <label for="paperTexture">Paper texture</label>
+                            <label for="paperTexture">Paper tone</label>
                             <select id="paperTexture">
-                                <option value="smooth">Smooth Premium</option>
-                                <option value="parchment">Parchment</option>
-                                <option value="linen">Linen</option>
-                                <option value="vellum">Vellum Antique</option>
+                                <option value="smooth">Bright White</option>
+                                <option value="parchment">Warm Cream</option>
                             </select>
                             <label for="awardTitle" class="full-width">Award title</label>
                             <input type="text" id="awardTitle" class="form-input full-width" placeholder="Digital Domain Holder">
-                            <label for="cornerOrnamentStyle">Corner ornament style</label>
-                            <select id="cornerOrnamentStyle">
-                                <option value="classic">Classic</option>
-                                <option value="victorian">Victorian</option>
-                                <option value="artdeco">Art Deco</option>
-                                <option value="none">None</option>
-                            </select>
-                            <label for="filigreePattern">Filigree pattern</label>
-                            <select id="filigreePattern">
-                                <option value="none">None</option>
-                                <option value="subtle">Subtle</option>
-                                <option value="ornate">Ornate</option>
-                                <option value="geometric">Geometric</option>
-                            </select>
-                            <label class="checkbox-row full-width" style="margin-top: 0.5rem;">
-                                <input type="checkbox" id="goldFoilAccent">
-                                <span>Gold foil accents</span>
-                            </label>
-                            <span class="full-width form-hint" style="margin-top: 0;">Metallic gold shimmer on all key elements.</span>
                         </div>
                     </div>
 
@@ -1207,6 +1227,7 @@
     <!-- Floating + button -->
     <button class="fab-btn" onclick="navigateToPanel('#studio'); updateNavActive('#studio');" title="Create a certificate">+</button>
 
+    <script src="certificate-engine.js"></script>
     <script src="studio.js"></script>
 </body>
 </html>

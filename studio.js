@@ -412,6 +412,8 @@ let currentCertificate = {
     domainYears: 1,
     claimToken: null,
     claimUrl: null,
+    theme: 'classic',
+    isGift: false,
 };
 // ===== PRICING =====
 // 10% margin applied to print + shipping + alterations
@@ -532,8 +534,8 @@ function setupPreviewListeners() {
         'recipientName', 'domainName', 'issueDate', 'certificateUpgrade',
         'upgradeNotes', 'fontStyle', 'primaryColor', 'secondaryColor',
         'borderStyle', 'sealStyle', 'paperTexture', 'awardTitle',
-        'cornerOrnamentStyle', 'filigreePattern', 'goldFoilAccent',
-        'frameUpgrade', 'frameWoodType', 'scrollOption', 'displayOption'
+        'frameWoodType', 'displayOption', 'themeAge', 'themeBabyName',
+        'themeYears', 'themeDegree', 'themeCompany'
     ];
 
     previewInputs.forEach(id => {
@@ -548,7 +550,12 @@ function setupPreviewListeners() {
 
     // Orientation radio buttons
     document.querySelectorAll('input[name="certOrientation"]').forEach(radio => {
-        radio.addEventListener('change', debouncedPreview);
+        radio.addEventListener('change', () => {
+            const isLandscape = document.querySelector('input[name="certOrientation"]:checked')?.value === 'landscape';
+            const canvas = document.getElementById('certificatePreview');
+            if (canvas) canvas.classList.toggle('landscape', isLandscape);
+            debouncedPreview();
+        });
     });
 
     // Orientation toggle styling
@@ -699,6 +706,7 @@ function changeTier(tier) {
 
 function setGiftMode(isGift) {
     isGiftMode = isGift;
+    currentCertificate.isGift = isGift;
     
     // Update toggle buttons
     document.getElementById('giftToggleSelf').classList.toggle('active', !isGift);
@@ -721,6 +729,9 @@ function setGiftMode(isGift) {
         hint.textContent = 'Will appear as the certificate holder';
         title.textContent = 'Your Details';
     }
+    
+    updatePreview();
+    queueBackgroundRender();
 }
 
 function renderDomainShopper() {
@@ -1086,20 +1097,17 @@ function updatePreview() {
         frameOptionsSection.classList.toggle('hidden', !hasFramedOption());
     }
 
-    const certHTML = renderCertificate(currentCertificate);
+    const certHTML = renderCertificateV2(currentCertificate);
     const displayOption = getDisplayOption();
     const hasFrame = displayOption === 'frame';
-    const hasScroll = displayOption === 'scroll';
-    const frameWoodType = document.getElementById('frameWoodType')?.value || 'black';
+    const frameColor = document.getElementById('frameWoodType')?.value || 'black';
     
     const innerContainer = document.getElementById('certCanvasInner');
     if (innerContainer) {
-        if (hasScroll) {
-            innerContainer.innerHTML = certHTML;
-        } else {
+        if (hasFrame) {
             innerContainer.innerHTML = `
                 <div class="frame-outer">
-                    <div class="frame-wood" data-wood="${frameWoodType}">
+                    <div class="frame-wood" data-wood="${frameColor}">
                         <div class="mat-board">
                             <div class="certificate-in-frame">
                                 ${certHTML}
@@ -1108,150 +1116,15 @@ function updatePreview() {
                     </div>
                 </div>
             `;
+        } else {
+            innerContainer.innerHTML = certHTML;
         }
     }
     
 }
 
 function renderCertificate(cert) {
-    const formattedDate = formatDate(cert.issueDate);
-    const capabilities = getTierCapabilities(cert.type);
-    const customizationEnabled = cert.customizationEnabled;
-    
-    const fontFamily = customizationEnabled && capabilities.canChangeFont 
-        ? (document.getElementById('fontStyle')?.value || 'Cormorant Garamond') : 'Cormorant Garamond';
-    const primaryColor = customizationEnabled && capabilities.canChangePrimaryColor 
-        ? (document.getElementById('primaryColor')?.value || '#6B0B22') : '#6B0B22';
-    const secondaryColor = customizationEnabled && capabilities.canChangeSecondaryColor 
-        ? (document.getElementById('secondaryColor')?.value || '#D62828') : '#D62828';
-    const borderStyle = customizationEnabled && capabilities.canChangeBorderStyle 
-        ? (document.getElementById('borderStyle')?.value || 'classic') : 'classic';
-    const sealStyle = customizationEnabled && capabilities.canChangeSealStyle 
-        ? (document.getElementById('sealStyle')?.value || 'classic') : 'classic';
-    const paperTexture = customizationEnabled && capabilities.canChangePaperTexture 
-        ? (document.getElementById('paperTexture')?.value || 'smooth') : 'smooth';
-    const awardTitle = customizationEnabled && capabilities.canChangeAwardTitle 
-        ? (document.getElementById('awardTitle')?.value || 'Digital Domain Holder') : 'Digital Domain Holder';
-    const goldFoil = customizationEnabled && capabilities.canUseGoldFoil 
-        ? (document.getElementById('goldFoilAccent')?.checked || false) : false;
-    const cornerOrnament = customizationEnabled && capabilities.canChangeCornerOrnament 
-        ? (document.getElementById('cornerOrnamentStyle')?.value || 'classic') : 'classic';
-    
-    const goldClass = goldFoil ? 'gold-foil' : '';
-    const isLandscape = document.querySelector('input[name="certOrientation"]:checked')?.value === 'landscape';
-    const orientClass = isLandscape ? 'cert-landscape' : '';
-    const borderMap = { double: 'cert-border-double', ornate: 'cert-border-ornate' };
-    const borderClass = borderMap[borderStyle] || 'cert-border-classic';
-    const paperClass = 'paper-' + paperTexture;
-    
-    const cornerEl = cornerOrnament === 'victorian' ? '&#10086;' : cornerOrnament === 'artdeco' ? '&#9670;' : '';
-    const cornerMarkup = cornerEl ? `
-        <div class="corner-ornament corner-ornament-tl" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
-        <div class="corner-ornament corner-ornament-tr" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
-        <div class="corner-ornament corner-ornament-bl" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
-        <div class="corner-ornament corner-ornament-br" style="color:${primaryColor}20;font-size:1.8rem;">${cornerEl}</div>
-    ` : `
-        <div class="corner corner-tl" style="border-color:${primaryColor}30;"></div>
-        <div class="corner corner-tr" style="border-color:${primaryColor}30;"></div>
-        <div class="corner corner-bl" style="border-color:${primaryColor}30;"></div>
-        <div class="corner corner-br" style="border-color:${primaryColor}30;"></div>`;
-
-    const sealSvg = sealStyle === 'shield' ? `
-        <svg viewBox="0 0 100 100" style="width:65px;height:65px;">
-            <path d="M50 5 L90 25 L90 65 Q90 90 50 105 Q10 90 10 65 L10 25 Z" fill="${primaryColor}08" stroke="${primaryColor}" stroke-width="1.5"/>
-            <text x="50" y="55" text-anchor="middle" font-size="14" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
-        </svg>` : `
-        <svg viewBox="0 0 100 100" style="width:65px;height:65px;">
-            <circle cx="50" cy="50" r="46" fill="${primaryColor}08" stroke="${primaryColor}" stroke-width="1.5"/>
-            <circle cx="50" cy="50" r="40" fill="none" stroke="${secondaryColor}" stroke-width="1" stroke-dasharray="3 3"/>
-            <path d="M35 50 L50 35 L65 50 L50 65 Z" fill="${primaryColor}18" stroke="${primaryColor}" stroke-width="1.2"/>
-            <text x="50" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="${primaryColor}" font-family="serif">DD</text>
-        </svg>`;
-
-    const domainInfo = cert.domainName && cert.domainName !== '[domain.com]' ? cert.domainName.toLowerCase() : '';
-    const domainYearsText = cert.domainPrice > 0 ? ` \u00b7 ${cert.domainYears} ${cert.domainYears === 1 ? 'year' : 'years'}` : '';
-    
-    // Smart text scaling based on name/title length
-    const nameLen = (cert.recipientName || '').length;
-    const nameSize = nameLen > 30 ? '0.9rem' : nameLen > 20 ? '1.05rem' : '1.2rem';
-    const awardLen = (awardTitle || '').length;
-    const awardSize = awardLen > 35 ? '0.6rem' : awardLen > 25 ? '0.7rem' : '0.8rem';
-    const notesLen = (cert.customizationNotes || '').length;
-    const notesSize = notesLen > 80 ? '0.42rem' : '0.5rem';
-
-    return `
-    <div class="certificate-wrapper ${borderClass} ${paperClass} ${goldClass} ${orientClass}">
-        <div class="certificate-inner" style="font-family:'${fontFamily}',Georgia,serif;">
-            ${cornerMarkup}
-            
-            <div style="height:3px;background:linear-gradient(90deg,transparent,${primaryColor},${secondaryColor},${primaryColor},transparent);margin:0 0 0.5rem;"></div>
-            
-            <div style="text-align:center;margin-bottom:0.3rem;">
-                <div style="font-size:1rem;font-weight:700;letter-spacing:3px;color:${primaryColor};">DOT DEED</div>
-                <div style="font-size:0.5rem;color:${secondaryColor};letter-spacing:2px;text-transform:uppercase;">Registry of Digital Estates</div>
-            </div>
-            
-            <div style="text-align:center;font-size:0.45rem;color:${primaryColor}60;letter-spacing:2px;margin-bottom:0.4rem;font-style:italic;">Veritas \u00b7 Digitalis \u00b7 Honor</div>
-            
-            <div style="display:flex;align-items:center;gap:0.5rem;margin:0 1rem 0.5rem;">
-                <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,${primaryColor}40);"></div>
-                <span style="color:${primaryColor}60;font-size:0.55rem;">&#9884;</span>
-                <div style="flex:1;height:1px;background:linear-gradient(90deg,${primaryColor}40,transparent);"></div>
-            </div>
-            
-            <div style="text-align:center;font-size:0.5rem;color:${primaryColor}99;letter-spacing:1px;margin-bottom:0.25rem;">By the authority vested in the Registry, it is hereby certified that</div>
-            
-            <div style="text-align:center;font-size:${nameSize};font-weight:700;color:${primaryColor};margin-bottom:0.2rem;letter-spacing:1px;font-family:'${fontFamily}',Georgia,serif;">
-                ${escapeHtml(cert.recipientName)}
-            </div>
-            
-            <div style="text-align:center;font-size:0.45rem;color:${primaryColor}88;letter-spacing:1px;margin-bottom:0.25rem;">having demonstrated rightful stewardship, is granted the title of</div>
-            
-            <div style="text-align:center;margin:0.2rem 2rem;padding:0.2rem 0;border-top:1px solid ${primaryColor}30;border-bottom:1px solid ${primaryColor}30;">
-                <span style="font-size:${awardSize};font-weight:700;color:${primaryColor};letter-spacing:1px;">${escapeHtml(awardTitle)}</span>
-            </div>
-            
-            ${domainInfo ? `
-            <div style="text-align:center;margin:0.4rem 0 0.2rem;">
-                <div style="font-size:0.45rem;color:${primaryColor}88;letter-spacing:1px;margin-bottom:0.1rem;">Network Namespace</div>
-                <div style="display:inline-block;padding:0.12rem 1rem;background:${primaryColor};color:#fff;font-size:0.7rem;font-weight:600;letter-spacing:0.5px;border-radius:2px;">${domainInfo}</div>
-                ${domainYearsText ? `<div style="font-size:0.4rem;color:${primaryColor}66;margin-top:0.08rem;">Registered for${domainYearsText}</div>` : ''}
-            </div>` : ''}
-            
-            ${customizationEnabled && cert.customizationNotes ? `
-            <div style="text-align:center;font-size:${notesSize};color:${primaryColor}99;font-style:italic;margin:0.15rem 1.5rem;line-height:1.4;">${escapeHtml(cert.customizationNotes)}</div>` : ''}
-            
-            <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin:0.4rem 0 0.25rem;">
-                <div style="text-align:center;flex:1;max-width:90px;">
-                    <div style="height:1px;background:${primaryColor};margin-bottom:0.12rem;"></div>
-                    <div style="font-size:0.45rem;color:${primaryColor};font-weight:600;letter-spacing:1px;">Registrar</div>
-                    <div style="font-size:0.38rem;color:${primaryColor}88;">Officer of the Registry</div>
-                </div>
-                <div style="flex:0 0 auto;">${sealSvg}</div>
-                <div style="text-align:center;flex:1;max-width:90px;">
-                    <div style="height:1px;background:${primaryColor};margin-bottom:0.12rem;"></div>
-                    <div style="font-size:0.45rem;color:${primaryColor};font-weight:600;letter-spacing:1px;">Chancellor</div>
-                    <div style="font-size:0.38rem;color:${primaryColor}88;">Dean of Digital Estates</div>
-                </div>
-            </div>
-            
-            <div style="height:1px;background:linear-gradient(90deg,transparent,${primaryColor}30,transparent);margin:0 1rem 0.25rem;"></div>
-            
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0.8rem;">
-                <div style="font-size:0.42rem;color:${primaryColor}88;">Issued ${formattedDate}</div>
-                <div style="font-size:0.42rem;color:${primaryColor}88;">No. ${cert.registryId}</div>
-                ${cert.domainName && cert.domainName !== '[domain.com]' ? `
-                <div style="display:flex;align-items:center;gap:0.25rem;">
-                    ${cert.claimToken 
-                        ? `<img src="${getQRDataUrl(cert.claimUrl || '')}" alt="" style="width:22px;height:22px;">`
-                        : `<div style="width:22px;height:22px;border:1px dashed ${primaryColor}40;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:${primaryColor}40;">QR</div>`}
-                    <div style="font-size:0.38rem;color:${primaryColor}66;line-height:1.2;">Claim<br>domain</div>
-                </div>` : ''}
-            </div>
-            
-            <div style="height:2px;background:linear-gradient(90deg,transparent,${primaryColor},${secondaryColor},${primaryColor},transparent);margin:0.35rem 0 0;"></div>
-        </div>
-    </div>`;
+    return renderCertificateV2(cert);
 }
 
 // ===== UTILITY FUNCTIONS =====
