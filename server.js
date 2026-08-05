@@ -10,8 +10,12 @@ const crypto = require('crypto');
 
 // ===== SETUP =====
 const app = express();
-const PORT = 5000;
-const db = new Database('dotdeed.db');
+const PORT = Number(process.env.PORT) || 5000;
+const isVercel = Boolean(process.env.VERCEL);
+const databasePath = isVercel
+    ? path.join('/tmp', 'dotdeed.db')
+    : path.join(__dirname, 'dotdeed.db');
+const db = new Database(databasePath);
 
 const GOOGLE_CLIENT_ID = '225372944068-dinr71d04igfu2733q3f4a4bb8b25cg2.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -1057,7 +1061,7 @@ Enjoy your new domain! 🎉`,
         if (claim?.buyer_email) {
             sendEmail({
                 to: claim.buyer_email,
-                subject: `🔑 Transfer instructions sent for ${domain}`,
+                subject: `�� Transfer instructions sent for ${domain}`,
                 text: `Your gifted domain ${domain} has been claimed!\n\nThe recipient has been sent the transfer authorization code.\n\nThey'll need to initiate a transfer at their chosen registrar using the EPP code.`,
             });
         }
@@ -1235,8 +1239,8 @@ app.get('/admin', (req, res) => {
 });
 
 // ===== STATIC FILES (after API routes) =====
-// Don't serve index.html automatically — use index-new.html instead
-app.use(express.static(__dirname, { index: false }));
+// Vercel serves public/ from its CDN; Express serves the same directory locally.
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve index-new.html as the default page (SPA routing for query-param pages)
