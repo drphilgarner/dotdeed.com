@@ -1,10 +1,16 @@
 /* ===== DESIGN TOKENS ===== */
 :root {
-    /* Dot Deed Brand Colors */
-    --deep-maroon: #6B0B22;
-    --deep-maroon-dark: #4F0819;
-    --bright-scarlet: #D62828;
-    --bright-scarlet-light: #E84848;
+    /* DOT DEED brand palette — one consistent burgundy hue family */
+    --deep-maroon: #6b0b22;
+    --deep-maroon-dark: #4f0819;
+    --bright-scarlet: #a61e45;
+    --bright-scarlet-light: #d94a70;
+    --brand-soft: rgba(166, 30, 69, 0.08);
+    --brand-soft-strong: rgba(166, 30, 69, 0.15);
+    --brand-shadow: rgba(107, 11, 34, 0.25);
+    --brand-shadow-strong: rgba(107, 11, 34, 0.35);
+    --on-brand: #ffffff;
+    --on-brand-muted: rgba(255, 255, 255, 0.72);
     
     /* Light Mode (Apple-Inspired) */
     --bg-primary: #ffffff;
@@ -41,9 +47,9 @@
     --transition-smooth: 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     
     /* SVG Logo Colors */
-    --logo-scroll: #6B0B22;
-    --logo-check: #D62828;
-    --logo-dot: #D62828;
+    --logo-scroll: var(--deep-maroon);
+    --logo-check: var(--bright-scarlet);
+    --logo-dot: var(--bright-scarlet);
 }
 
 /* ===== DARK MODE ===== */
@@ -67,10 +73,18 @@
     --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.2);
     --shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.4);
     
-    /* Dark mode logo colors - brighter for contrast */
-    --logo-scroll: #B80C30;
-    --logo-check: #FF3B3B;
-    --logo-dot: #FF3B3B;
+    /* Brighter values from the same burgundy hue family */
+    --deep-maroon: #d94a70;
+    --deep-maroon-dark: #a61e45;
+    --bright-scarlet: #e45b7f;
+    --bright-scarlet-light: #f27698;
+    --brand-soft: rgba(228, 91, 127, 0.12);
+    --brand-soft-strong: rgba(228, 91, 127, 0.2);
+    --brand-shadow: rgba(228, 91, 127, 0.22);
+    --brand-shadow-strong: rgba(228, 91, 127, 0.32);
+    --logo-scroll: #d94a70;
+    --logo-check: #e45b7f;
+    --logo-dot: #e45b7f;
 }
 
 /* ===== RESET & BASELINE ===== */
@@ -383,7 +397,7 @@ body {
 }
 
 [data-theme="dark"] .brand-highlight::after {
-    background: linear-gradient(90deg, var(--bright-scarlet), #ff5555);
+    background: linear-gradient(90deg, var(--bright-scarlet), var(--bright-scarlet-light));
 }
 
 /* ===== BRAND STAMP ===== */
@@ -605,7 +619,7 @@ body {
 .about-cta-btn.primary {
     background: linear-gradient(135deg, var(--deep-maroon), var(--bright-scarlet));
     color: #ffffff;
-    box-shadow: 0 4px 14px rgba(107, 11, 34, 0.25);
+    box-shadow: 0 4px 14px var(--brand-shadow);
 }
 
 .about-cta-btn.primary:hover {
@@ -614,7 +628,7 @@ body {
 }
 
 [data-theme="dark"] .about-cta-btn.primary {
-    background: linear-gradient(135deg, var(--bright-scarlet), #a02020);
+    background: linear-gradient(135deg, var(--bright-scarlet), var(--deep-maroon-dark));
 }
 
 .about-cta-btn.secondary {
@@ -732,7 +746,7 @@ body {
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--bright-scarlet);
-    background: rgba(214, 40, 40, 0.08);
+    background: var(--brand-soft);
     padding: 6px 14px;
     border-radius: var(--radius-pill);
     margin-bottom: 1.25rem;
@@ -740,7 +754,7 @@ body {
 }
 
 [data-theme="dark"] .s-hero-badge {
-    background: rgba(214, 40, 40, 0.15);
+    background: var(--brand-soft-strong);
     color: var(--bright-scarlet-light);
 }
 
@@ -795,7 +809,7 @@ body {
 .s-btn-primary {
     background: linear-gradient(135deg, var(--deep-maroon), var(--bright-scarlet));
     color: #ffffff;
-    box-shadow: 0 4px 16px rgba(107, 11, 34, 0.25);
+    box-shadow: 0 4px 16px var(--brand-shadow);
 }
 
 .s-btn-primary:hover {
@@ -804,7 +818,7 @@ body {
 }
 
 [data-theme="dark"] .s-btn-primary {
-    background: linear-gradient(135deg, var(--bright-scarlet), #a02020);
+    background: linear-gradient(135deg, var(--bright-scarlet), var(--deep-maroon-dark));
 }
 
 .s-btn-secondary {
@@ -945,7 +959,7 @@ body {
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--bright-scarlet);
-    background: rgba(214, 40, 40, 0.08);
+    background: var(--brand-soft);
     padding: 5px 12px;
     border-radius: var(--radius-pill);
     margin-bottom: 0.75rem;
@@ -953,7 +967,7 @@ body {
 }
 
 [data-theme="dark"] .s-section-badge {
-    background: rgba(214, 40, 40, 0.15);
+    background: var(--brand-soft-strong);
     color: var(--bright-scarlet-light);
 }
 
@@ -1008,7 +1022,7 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(107, 11, 34, 0.08), rgba(214, 40, 40, 0.05));
+    background: var(--brand-soft);
     color: var(--deep-maroon);
     flex-shrink: 0;
 }
@@ -1020,7 +1034,7 @@ body {
 
 [data-theme="dark"] .s-feature-icon {
     color: var(--bright-scarlet-light);
-    background: linear-gradient(135deg, rgba(184, 12, 48, 0.15), rgba(255, 59, 59, 0.08));
+    background: var(--brand-soft);
 }
 
 .s-feature-title {
@@ -1223,12 +1237,12 @@ body {
 
 .s-product-featured {
     border: 2px solid var(--deep-maroon);
-    background: linear-gradient(135deg, rgba(107, 11, 34, 0.03), transparent);
+    background: linear-gradient(135deg, var(--brand-soft), transparent);
 }
 
 [data-theme="dark"] .s-product-featured {
     border-color: var(--bright-scarlet);
-    background: linear-gradient(135deg, rgba(214, 40, 40, 0.06), transparent);
+    background: linear-gradient(135deg, var(--brand-soft), transparent);
 }
 
 .s-product-badge {
@@ -1248,7 +1262,7 @@ body {
 }
 
 [data-theme="dark"] .s-product-badge {
-    background: linear-gradient(135deg, var(--bright-scarlet), #a02020);
+    background: linear-gradient(135deg, var(--bright-scarlet), var(--deep-maroon-dark));
 }
 
 .s-product-preview {
@@ -1336,7 +1350,7 @@ body {
 }
 
 [data-theme="dark"] .s-diploma-accent-elite {
-    background: linear-gradient(90deg, var(--bright-scarlet), #ff5555, var(--bright-scarlet));
+    background: linear-gradient(90deg, var(--bright-scarlet), var(--bright-scarlet-light), var(--bright-scarlet));
 }
 
 .s-product-body {
@@ -1585,7 +1599,7 @@ body {
 }
 
 [data-theme="dark"] .tier-card-badge-float {
-    background: linear-gradient(135deg, var(--bright-scarlet), #a02020);
+    background: linear-gradient(135deg, var(--bright-scarlet), var(--deep-maroon-dark));
 }
 
 .tier-card-header {
@@ -1607,14 +1621,14 @@ body {
     letter-spacing: 1px;
     text-transform: uppercase;
     color: var(--bright-scarlet);
-    background: rgba(214, 40, 40, 0.08);
+    background: var(--brand-soft);
     padding: 3px 10px;
     border-radius: var(--radius-pill);
 }
 
 [data-theme="dark"] .tier-card-badge {
     color: var(--bright-scarlet-light);
-    background: rgba(214, 40, 40, 0.15);
+    background: var(--brand-soft-strong);
 }
 
 .tier-card-preview {
@@ -1670,7 +1684,7 @@ body {
 }
 
 [data-theme="dark"] .tier-select-btn {
-    background: linear-gradient(135deg, var(--bright-scarlet), #a02020);
+    background: linear-gradient(135deg, var(--bright-scarlet), var(--deep-maroon-dark));
 }
 
 @media (max-width: 768px) {
@@ -1868,7 +1882,7 @@ body {
 }
 
 [data-theme="dark"] .studio-tier-pill.active {
-    background: linear-gradient(135deg, var(--bright-scarlet), #a02020);
+    background: linear-gradient(135deg, var(--bright-scarlet), var(--deep-maroon-dark));
 }
 
 .tier-pill-price {
@@ -3095,7 +3109,7 @@ body {
 }
 
 [data-theme="dark"] .user-registry-badge {
-    background: linear-gradient(135deg, var(--bright-scarlet), #a02020);
+    background: linear-gradient(135deg, var(--bright-scarlet), var(--deep-maroon-dark));
 }
 
 .registry-badge-id {
@@ -3240,7 +3254,7 @@ body {
 
 [data-theme="dark"] .auth-input:focus {
     border-color: var(--bright-scarlet);
-    box-shadow: 0 0 0 2px rgba(214, 40, 40, 0.15);
+    box-shadow: 0 0 0 2px var(--brand-soft-strong);
 }
 
 .auth-error {
@@ -3912,7 +3926,7 @@ body {
 }
 
 .site-footer:hover .footer-logo-wrapper {
-    background: linear-gradient(135deg, rgba(107, 11, 34, 0.14), rgba(214, 40, 40, 0.08));
+    background: linear-gradient(135deg, rgba(107, 11, 34, 0.14), var(--brand-soft));
     box-shadow: 0 0 20px rgba(107, 11, 34, 0.12);
 }
 
